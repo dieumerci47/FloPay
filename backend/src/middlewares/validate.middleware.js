@@ -14,8 +14,7 @@ const validate = (req, res, next) => {
 // ── Règles de validation ──────────────────────────────────────────────────────
 
 const paymentRules = [
-  body("matricule")
-    .trim().notEmpty().withMessage("Le matricule est requis"),
+  // matricule : non saisi par l'étudiant — généré côté backend
   body("fullName")
     .trim().notEmpty().withMessage("Le nom complet est requis")
     .isLength({ min: 3 }).withMessage("Nom trop court"),

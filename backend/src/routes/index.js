@@ -5,7 +5,7 @@ const router  = express.Router();
 const { initiatePayment, pawapayWebhook, getPaymentStatus, downloadReceipt }
   = require("../controllers/payment.controller");
 
-const { login, searchByMatricule, listPayments, getDashboardStats }
+const { login, searchByMatricule, searchByReceipt, listPayments, getDashboardStats }
   = require("../controllers/admin.controller");
 
 const { getEstablishments, getProgramsByEstablishment, createEstablishment, createProgram }
@@ -43,7 +43,8 @@ router.post("/admin/auth/login", loginRules, validate, login);
 
 // Dashboard & recherche
 router.get("/admin/dashboard",                   authenticate, getDashboardStats);
-router.get("/admin/students/:matricule",         authenticate, searchByMatricule);
+router.get("/admin/receipts/:receiptNumber",     authenticate, searchByReceipt);   // vérification principale (par reçu)
+router.get("/admin/students/:matricule",         authenticate, searchByMatricule); // secondaire (si matricule fourni)
 router.get("/admin/payments",                    authenticate, listPayments);
 
 // Gestion établissements & programmes (Super Admin seulement)

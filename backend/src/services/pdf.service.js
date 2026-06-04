@@ -78,7 +78,7 @@ class PdfService {
         .font("Helvetica")
         .text(`N° : ${receiptNumber}`, 50, 162, { width: W / 2 })
         .text(
-          `Matricule : ${student.matricule}`,
+          `Matricule : ${student.matricule || "—"}`,
           50 + W / 2, 162,
           { width: W / 2, align: "right" }
         );

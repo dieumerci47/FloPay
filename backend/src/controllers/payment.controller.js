@@ -3,12 +3,13 @@ const { prisma }              = require("../config/database");
 const pawapayService          = require("../services/pawapay.service");
 const pdfService              = require("../services/pdf.service");
 const { generateReceiptNumber } = require("../utils/receiptNumber");
+const { generateMatricule }     = require("../utils/matricule");
 const { success, error }      = require("../utils/response");
 const logger                  = require("../utils/logger");
 
 // ── Initier un paiement ───────────────────────────────────────────────────────
 const initiatePayment = async (req, res) => {
-  const { matricule, fullName, birthDate, birthPlace, phone,
+  const { fullName, birthDate, birthPlace, phone,
           establishmentId, programId, paymentMethod, paymentPhone } = req.body;
 
   try {
@@ -19,25 +20,26 @@ const initiatePayment = async (req, res) => {
     });
     if (!program) return error(res, "Programme introuvable", 404);
 
-    // 2. Vérifier que l'étudiant n'a pas déjà payé cette année
+    // 2. Vérifier que l'étudiant n'a pas déjà payé ce parcours cette année.
+    //    Identité = téléphone + nom (pas de matricule fiable côté UMG).
     const alreadyPaid = await prisma.payment.findFirst({
       where: {
-        student: { matricule },
+        student: { phone, fullName },
         programId,
         academicYear: program.academicYear,
         status: "SUCCESS",
       },
     });
     if (alreadyPaid) {
-      return error(res, "Ce matricule a déjà un paiement validé pour cette année académique", 409);
+      return error(res, "Ce numéro a déjà un paiement validé pour ce parcours cette année académique", 409);
     }
 
-    // 3. Créer ou retrouver l'étudiant
-    let student = await prisma.student.findUnique({ where: { matricule } });
+    // 3. Créer ou retrouver l'étudiant (identité = téléphone + nom)
+    let student = await prisma.student.findFirst({ where: { phone, fullName } });
     if (!student) {
       student = await prisma.student.create({
         data: {
-          matricule,
+          matricule: generateMatricule(),   // identifiant interne auto-généré
           fullName,
           birthDate: birthDate ? new Date(birthDate) : null,
           birthPlace,
@@ -82,7 +84,7 @@ const initiatePayment = async (req, res) => {
       data:  { pawapayDepositId: depositId },
     });
 
-    logger.info(`💳 Paiement initié: ${receiptNumber} | Étudiant: ${matricule}`);
+    logger.info(`💳 Paiement initié: ${receiptNumber} | Étudiant: ${student.fullName} (${phone})`);
 
     return success(res, {
       paymentId:     payment.id,

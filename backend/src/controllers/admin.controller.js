@@ -37,7 +37,7 @@ const login = async (req, res) => {
 const searchByMatricule = async (req, res) => {
   const { matricule } = req.params;
   try {
-    const student = await prisma.student.findUnique({
+    const student = await prisma.student.findFirst({
       where: { matricule },
       include: {
         establishment: true,
@@ -89,6 +89,51 @@ const searchByMatricule = async (req, res) => {
 
   } catch (err) {
     logger.error("Erreur searchByMatricule:", err);
+    return error(res, "Erreur lors de la recherche", 500);
+  }
+};
+
+// ── Recherche par numéro de reçu (vérification principale scolarité) ──────────
+// C'est le flux normal : l'étudiant présente son reçu (PDF / QR), l'admin
+// retrouve le paiement par son receiptNumber et lit les infos de l'étudiant.
+const searchByReceipt = async (req, res) => {
+  const { receiptNumber } = req.params;
+  try {
+    const payment = await prisma.payment.findUnique({
+      where:   { receiptNumber },
+      include: {
+        student: { include: { establishment: true } },
+        program: true,
+        receipt: true,
+      },
+    });
+
+    if (!payment) return error(res, "Aucun paiement trouvé avec ce numéro de reçu", 404);
+
+    return success(res, {
+      receiptNumber: payment.receiptNumber,
+      status:        payment.status,
+      paymentStatus: payment.status === "SUCCESS" ? "PAYÉ" : "NON PAYÉ",
+      amount:        Number(payment.amount),
+      currency:      payment.currency,
+      paymentMethod: payment.paymentMethod,
+      paidAt:        payment.paidAt,
+      academicYear:  payment.academicYear,
+      hasReceipt:    !!payment.receipt,
+      student: {
+        fullName:      payment.student.fullName,
+        matricule:     payment.student.matricule,   // peut être null
+        birthDate:     payment.student.birthDate,
+        birthPlace:    payment.student.birthPlace,
+        phone:         payment.student.phone,
+        establishment: payment.student.establishment.name,
+        program:       payment.program.name,
+        level:         payment.program.level,
+      },
+    });
+
+  } catch (err) {
+    logger.error("Erreur searchByReceipt:", err);
     return error(res, "Erreur lors de la recherche", 500);
   }
 };
@@ -211,4 +256,4 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
-module.exports = { login, searchByMatricule, listPayments, getDashboardStats };
+module.exports = { login, searchByMatricule, searchByReceipt, listPayments, getDashboardStats };

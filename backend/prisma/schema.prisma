@@ -46,7 +46,7 @@ model Program {
 // ─── Etudiants ────────────────────────────────────────────────────────────────
 model Student {
   id              String   @id @default(uuid())
-  matricule       String   @unique
+  matricule       String   @unique     // identifiant interne auto-généré (jamais saisi par l'étudiant)
   fullName        String
   birthDate       DateTime?
   birthPlace      String?

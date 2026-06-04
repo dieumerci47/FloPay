@@ -10,109 +10,125 @@ import {
 
 // ── Icônes inline ──────────────────────────────────────────────────────────────
 const Icon = {
-  Check: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  Check: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <polyline points="20 6 9 17 4 12" />
     </svg>
   ),
-  User: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  User: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
     </svg>
   ),
-  Building: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  Building: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <rect x="2" y="3" width="20" height="18" rx="2" />
       <path d="M8 21V12h8v9M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01" />
     </svg>
   ),
-  Phone: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  Phone: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 3h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.6a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.72 18l.2-1.08z" />
     </svg>
   ),
-  Download: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  Download: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
   ),
-  Arrow: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  Arrow: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <line x1="5" y1="12" x2="19" y2="12" />
       <polyline points="12 5 19 12 12 19" />
     </svg>
   ),
-  ArrowLeft: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  ArrowLeft: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <line x1="19" y1="12" x2="5" y2="12" />
       <polyline points="12 19 5 12 12 5" />
     </svg>
   ),
-  Clock: () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  Clock: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
     </svg>
   ),
-  Success: () => (
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  Success: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
       <polyline points="22 4 12 14.01 9 11.01" />
     </svg>
   ),
-  Error: () => (
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  Error: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
       <circle cx="12" cy="12" r="10" />
       <line x1="15" y1="9" x2="9" y2="15" />
       <line x1="9" y1="9" x2="15" y2="15" />
+    </svg>
+  ),
+  Shield: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
     </svg>
   ),
 };
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 const STEPS = [
-  { id: 1, label: "Identité"    },
+  { id: 1, label: "Identité" },
   { id: 2, label: "Inscription" },
-  { id: 3, label: "Paiement"   },
-  { id: 4, label: "Confirmation"},
+  { id: 3, label: "Paiement" },
 ];
 
 const CURRENT_YEAR = "2024-2025";
+
+const FEATURES = [
+  "Paiement 100 % sécurisé, sans file d'attente",
+  "Reçu PDF officiel généré instantanément",
+  "Disponible 24h/24, 7j/7, depuis votre téléphone",
+  "Compatible MTN MoMo & Airtel Money",
+];
+
+// ── Helpers de style ───────────────────────────────────────────────────────────
+const cx = (...a) => a.filter(Boolean).join(" ");
+
+const inputBase =
+  "w-full rounded-xl border bg-white px-4 py-3 text-[0.94rem] text-ink-900 placeholder:text-ink-900/30 shadow-sm outline-none transition duration-200 hover:border-ink-900/30 focus:border-ink-700 focus:ring-4 focus:ring-ink-700/10";
+const inputOk = "border-ink-900/10";
+const inputErr = "border-red-400 focus:border-red-500 focus:ring-red-500/10";
+const labelCls = "flex items-center gap-1 text-[0.82rem] font-semibold text-ink-900/80";
 
 // ── Composant principal ────────────────────────────────────────────────────────
 export default function PaymentForm() {
   const [step, setStep] = useState(1);
 
-  // Données formulaire
   const [form, setForm] = useState({
-    matricule:       "",
-    fullName:        "",
-    birthDate:       "",
-    birthPlace:      "",
-    phone:           "",
+    fullName: "",
+    birthDate: "",
+    birthPlace: "",
+    phone: "",
     establishmentId: "",
-    programId:       "",
-    paymentMethod:   "",
-    paymentPhone:    "",
+    programId: "",
+    paymentMethod: "",
+    paymentPhone: "",
   });
 
   const [errors, setErrors] = useState({});
 
-  // Données API
   const [establishments, setEstablishments] = useState([]);
-  const [programs, setPrograms]             = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [selectedProgram, setSelectedProgram] = useState(null);
 
-  // Paiement
-  const [paymentData, setPaymentData] = useState(null); // réponse POST /payments
-  const [paymentStatus, setPaymentStatus] = useState(null); // PENDING / SUCCESS / FAILED
+  const [paymentData, setPaymentData] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState(null);
   const [pollCount, setPollCount] = useState(0);
 
-  // UI
-  const [loading, setLoading]           = useState(false);
+  const [loading, setLoading] = useState(false);
   const [loadingEstab, setLoadingEstab] = useState(true);
   const [loadingPrograms, setLoadingPrograms] = useState(false);
 
@@ -126,7 +142,11 @@ export default function PaymentForm() {
 
   // ── Chargement parcours quand établissement change ────────────────────────
   useEffect(() => {
-    if (!form.establishmentId) { setPrograms([]); setSelectedProgram(null); return; }
+    if (!form.establishmentId) {
+      setPrograms([]);
+      setSelectedProgram(null);
+      return;
+    }
     setLoadingPrograms(true);
     setForm((f) => ({ ...f, programId: "" }));
     setSelectedProgram(null);
@@ -138,7 +158,10 @@ export default function PaymentForm() {
 
   // ── Mise à jour programme sélectionné ─────────────────────────────────────
   useEffect(() => {
-    if (!form.programId) { setSelectedProgram(null); return; }
+    if (!form.programId) {
+      setSelectedProgram(null);
+      return;
+    }
     const prog = programs.find((p) => p.id === form.programId);
     setSelectedProgram(prog || null);
   }, [form.programId, programs]);
@@ -149,9 +172,8 @@ export default function PaymentForm() {
     try {
       const data = await getPaymentStatus(paymentData.paymentId);
       setPaymentStatus(data.status);
-      if (data.status === "SUCCESS" || data.status === "FAILED") return; // stop
+      if (data.status === "SUCCESS" || data.status === "FAILED") return;
     } catch (err) {
-      // ignore network errors, but ensure polling continues
       console.warn("Polling error:", err);
     } finally {
       if (paymentStatus !== "SUCCESS" && paymentStatus !== "FAILED") {
@@ -173,25 +195,18 @@ export default function PaymentForm() {
     if (errors[field]) setErrors((er) => ({ ...er, [field]: "" }));
   };
 
-  const formatAmount = (n) =>
-    new Intl.NumberFormat("fr-FR").format(n) + " F CFA";
-
-  const formatDate = (d) => {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
-  };
+  const formatAmount = (n) => new Intl.NumberFormat("fr-FR").format(n) + " F CFA";
 
   // ── Validations par étape ─────────────────────────────────────────────────
   const validateStep = (s) => {
     const errs = {};
     if (s === 1) {
-      if (!form.matricule.trim()) errs.matricule  = "Le matricule est requis";
-      if (!form.fullName.trim())  errs.fullName   = "Le nom complet est requis";
-      if (!form.phone.trim())     errs.phone      = "Le téléphone est requis";
+      if (!form.fullName.trim()) errs.fullName = "Le nom complet est requis";
+      if (!form.phone.trim()) errs.phone = "Le téléphone est requis";
     }
     if (s === 2) {
       if (!form.establishmentId) errs.establishmentId = "Choisissez un établissement";
-      if (!form.programId)       errs.programId       = "Choisissez un parcours";
+      if (!form.programId) errs.programId = "Choisissez un parcours";
     }
     if (s === 3) {
       if (!form.paymentMethod) errs.paymentMethod = "Choisissez un mode de paiement";
@@ -204,14 +219,20 @@ export default function PaymentForm() {
 
   const nextStep = () => {
     const errs = validateStep(step);
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      return;
+    }
     setStep((s) => s + 1);
   };
 
   // ── Soumettre le paiement ─────────────────────────────────────────────────
   const submitPayment = async () => {
     const errs = validateStep(3);
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      return;
+    }
     setLoading(true);
     try {
       const data = await initiatePayment(form);
@@ -230,456 +251,561 @@ export default function PaymentForm() {
 
   // ──────────────────────────────────────────────────────────────────────────
   return (
-    <div className="page">
-      {/* ── Panneau gauche ── */}
-      <div className="page-left">
-        <div className="brand">
-          <div className="brand-logo">
-            <div className="brand-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="2" y="5" width="20" height="14" rx="2" />
+    <div className="min-h-screen lg:grid lg:grid-cols-[1.05fr_1fr]">
+      {/* ── Panneau gauche (hero) ── */}
+      <aside className="grain relative hidden overflow-hidden bg-ink-950 lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
+        {/* Dégradé maillé + halos */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(120% 90% at 12% 8%, rgba(232,160,32,0.16), transparent 42%), radial-gradient(120% 100% at 95% 100%, rgba(31,77,117,0.55), transparent 55%), linear-gradient(160deg, #0a1f30 0%, #06141f 100%)",
+          }}
+        />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full border-[56px] border-gold/10 animate-float-slow" />
+        <div className="pointer-events-none absolute -bottom-20 -left-16 h-72 w-72 rounded-full border-[40px] border-white/[0.04] animate-float" />
+        <div className="pointer-events-none absolute right-20 top-1/3 h-2.5 w-2.5 rounded-full bg-gold/70 blur-[1px] animate-float" />
+
+        {/* Marque */}
+        <div className="relative z-10 animate-fade-up">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gold shadow-glow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#06141f" strokeWidth="2.5" className="h-6 w-6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2.5" />
                 <line x1="2" y1="10" x2="22" y2="10" />
+                <circle cx="7" cy="15" r="1.4" fill="#06141f" stroke="none" />
               </svg>
             </div>
             <div>
-              <div className="brand-name">UMG PayTech</div>
-              <div className="brand-tagline">Université Marien Ngouabi</div>
+              <div className="font-display text-xl font-bold tracking-tight text-white">FloPay</div>
+              <div className="text-xs text-white/45">Université Marien Ngouabi</div>
             </div>
           </div>
+        </div>
 
-          <div className="left-hero">
-            <h1>Payer vos frais de scolarité <span>sans file d'attente</span></h1>
-            <p>Règlez vos frais depuis votre téléphone en moins de 2 minutes. Votre reçu officiel est généré instantanément.</p>
+        {/* Hero */}
+        <div className="relative z-10 max-w-md">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[0.72rem] font-medium uppercase tracking-wider text-gold-300 animate-fade-up" style={{ animationDelay: "80ms" }}>
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-gold-300 opacity-75 animate-pulse-ring" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-gold-300" />
+            </span>
+            Scolarité en ligne · 2 minutes
           </div>
+          <h1 className="font-display text-[2.7rem] font-extrabold leading-[1.08] tracking-tight text-white text-balance animate-fade-up" style={{ animationDelay: "150ms" }}>
+            Payez vos frais de scolarité{" "}
+            <span className="bg-gradient-to-r from-gold-300 to-gold bg-clip-text text-transparent">
+              sans faire la queue.
+            </span>
+          </h1>
+          <p className="mt-5 max-w-sm text-[0.98rem] leading-relaxed text-white/55 animate-fade-up" style={{ animationDelay: "230ms" }}>
+            Réglez depuis votre téléphone via Mobile Money. Votre déclaration de
+            recette officielle est générée instantanément — prête à présenter à
+            votre établissement.
+          </p>
 
-          <div className="left-features">
-            {[
-              "Paiement 100% sécurisé",
-              "Reçu PDF officiel instantané",
-              "Disponible 24h/24, 7j/7",
-              "Compatible MTN & Airtel Money",
-            ].map((f) => (
-              <div className="left-feature" key={f}>
-                <div className="left-feature-dot" />
-                <span>{f}</span>
-              </div>
+          <ul className="mt-9 space-y-3.5">
+            {FEATURES.map((f, i) => (
+              <li
+                key={f}
+                className="flex items-center gap-3 text-[0.9rem] text-white/70 animate-fade-up"
+                style={{ animationDelay: `${300 + i * 70}ms` }}
+              >
+                <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-gold/15 text-gold-300 ring-1 ring-gold/25">
+                  <Icon.Check className="h-3.5 w-3.5" />
+                </span>
+                {f}
+              </li>
             ))}
+          </ul>
+        </div>
+
+        {/* Bas : opérateurs + confiance */}
+        <div className="relative z-10 animate-fade-up" style={{ animationDelay: "640ms" }}>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-[#FFC300] px-3.5 py-1.5 text-[0.78rem] font-bold tracking-tight text-[#1A1A1A]">MTN MoMo</span>
+            <span className="rounded-full bg-[#E8192C] px-3.5 py-1.5 text-[0.78rem] font-bold tracking-tight text-white">Airtel Money</span>
+            <span className="text-[0.78rem] text-white/40">acceptés</span>
+          </div>
+          <div className="mt-5 flex items-center gap-2 text-[0.76rem] text-white/35">
+            <Icon.Shield className="h-4 w-4 text-gold/70" />
+            Transactions chiffrées · Aucune donnée bancaire stockée
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Panneau droit (formulaire) ── */}
+      <main className="scroll-slim flex min-h-screen flex-col bg-cream px-5 py-8 sm:px-8 lg:max-h-screen lg:overflow-y-auto lg:px-10 lg:py-12">
+        {/* En-tête marque (mobile) */}
+        <div className="mb-7 flex items-center gap-2.5 lg:hidden">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink-900">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#E8A020" strokeWidth="2.5" className="h-5 w-5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="5" width="20" height="14" rx="2.5" />
+              <line x1="2" y1="10" x2="22" y2="10" />
+            </svg>
+          </div>
+          <div>
+            <div className="font-display text-base font-bold text-ink-900">FloPay</div>
+            <div className="text-[0.7rem] text-ink-900/50">Université Marien Ngouabi</div>
           </div>
         </div>
 
-        <div className="left-bottom">
-          <div className="left-operators">
-            <span className="operator-badge operator-mtn">MTN MoMo</span>
-            <span className="operator-badge operator-airtel">Airtel Money</span>
-            <span className="operator-label">acceptés</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Panneau droit ── */}
-      <div className="page-right">
-        <div className="form-container">
-
+        <div className="mx-auto flex w-full max-w-[560px] flex-1 flex-col">
           {/* Progress */}
           {step < 4 && (
-            <div className="step-progress">
-              {STEPS.filter((s) => s.id <= 3).map((s) => (
-                <div
-                  key={s.id}
-                  className={`step-item ${step === s.id ? "active" : ""} ${step > s.id ? "completed" : ""}`}
-                >
-                  <div className="step-circle">
-                    {step > s.id ? <Icon.Check /> : s.id}
-                  </div>
-                  <span className="step-label">{s.label}</span>
-                </div>
-              ))}
+            <div className="mb-9 flex items-center">
+              {STEPS.map((s, i) => {
+                const active = step === s.id;
+                const done = step > s.id;
+                return (
+                  <React.Fragment key={s.id}>
+                    <div className="flex flex-col items-center gap-2">
+                      <div
+                        className={cx(
+                          "flex h-9 w-9 items-center justify-center rounded-full text-[0.82rem] font-bold transition-all duration-300",
+                          done && "bg-ink-900 text-white",
+                          active && "bg-ink-900 text-white ring-4 ring-ink-900/15",
+                          !active && !done && "border border-ink-900/15 bg-white text-ink-900/40"
+                        )}
+                      >
+                        {done ? <Icon.Check className="h-4 w-4" /> : s.id}
+                      </div>
+                      <span
+                        className={cx(
+                          "text-[0.72rem] font-medium transition-colors",
+                          active || done ? "text-ink-900" : "text-ink-900/40"
+                        )}
+                      >
+                        {s.label}
+                      </span>
+                    </div>
+                    {i < STEPS.length - 1 && (
+                      <div className="relative mx-1 -mt-5 h-0.5 flex-1 overflow-hidden rounded-full bg-ink-900/10">
+                        <div
+                          className="absolute inset-y-0 left-0 rounded-full bg-ink-900 transition-all duration-500"
+                          style={{ width: step > s.id ? "100%" : "0%" }}
+                        />
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
           )}
 
           {/* ── ÉTAPE 1 — Identité ── */}
           {step === 1 && (
-            <>
-              <div className="step-header">
-                <div className="step-badge"><Icon.User /> Étape 1 sur 3</div>
-                <h2>Vos informations personnelles</h2>
-                <p>Saisissez vos informations telles qu'elles figurent sur votre dossier académique.</p>
+            <div key="s1" className="animate-fade-up">
+              <StepHeader
+                icon={<Icon.User className="h-3.5 w-3.5" />}
+                badge="Étape 1 sur 3"
+                title="Vos informations personnelles"
+                desc="Saisissez vos informations telles qu'elles figurent sur votre dossier académique."
+              />
+
+              <div className="grid gap-4">
+                <Field label="Nom et Prénom(s)" required error={errors.fullName}>
+                  <input type="text" placeholder="ex : YOUNDOUKA KOMBILA Davy Sagesse" value={form.fullName} onChange={set("fullName")} className={cx(inputBase, errors.fullName ? inputErr : inputOk)} />
+                </Field>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Date de naissance">
+                    <input type="date" value={form.birthDate} onChange={set("birthDate")} className={cx(inputBase, inputOk)} />
+                  </Field>
+                  <Field label="Lieu de naissance">
+                    <input type="text" placeholder="ex : Pointe-Noire" value={form.birthPlace} onChange={set("birthPlace")} className={cx(inputBase, inputOk)} />
+                  </Field>
+                </div>
+
+                <Field label="Téléphone personnel" required error={errors.phone}>
+                  <input type="tel" placeholder="ex : 06 878 6678" value={form.phone} onChange={set("phone")} className={cx(inputBase, errors.phone ? inputErr : inputOk)} />
+                </Field>
               </div>
 
-              <div className="form-grid">
-                <div className="field">
-                  <label className="field-label">Matricule <span className="required">*</span></label>
-                  <input
-                    type="text"
-                    placeholder="ex : 01500251354313533"
-                    value={form.matricule}
-                    onChange={set("matricule")}
-                    className={errors.matricule ? "error" : ""}
-                  />
-                  {errors.matricule && <span className="field-error">⚠ {errors.matricule}</span>}
-                </div>
-
-                <div className="field">
-                  <label className="field-label">Nom et Prénom(s) <span className="required">*</span></label>
-                  <input
-                    type="text"
-                    placeholder="ex : YOUNDOUKA KOMBILA Davy Sagesse"
-                    value={form.fullName}
-                    onChange={set("fullName")}
-                    className={errors.fullName ? "error" : ""}
-                  />
-                  {errors.fullName && <span className="field-error">⚠ {errors.fullName}</span>}
-                </div>
-
-                <div className="form-grid form-grid-2">
-                  <div className="field">
-                    <label className="field-label">Date de naissance</label>
-                    <input type="date" value={form.birthDate} onChange={set("birthDate")} />
-                  </div>
-                  <div className="field">
-                    <label className="field-label">Lieu de naissance</label>
-                    <input
-                      type="text"
-                      placeholder="ex : Pointe-Noire"
-                      value={form.birthPlace}
-                      onChange={set("birthPlace")}
-                    />
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label className="field-label">Téléphone personnel <span className="required">*</span></label>
-                  <input
-                    type="tel"
-                    placeholder="ex : 06 878 6678"
-                    value={form.phone}
-                    onChange={set("phone")}
-                    className={errors.phone ? "error" : ""}
-                  />
-                  {errors.phone && <span className="field-error">⚠ {errors.phone}</span>}
-                </div>
+              <div className="mt-7 flex gap-3">
+                <PrimaryButton onClick={nextStep}>
+                  Continuer <Icon.Arrow className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </PrimaryButton>
               </div>
-
-              <div className="btn-row">
-                <button className="btn btn-primary" onClick={nextStep}>
-                  Continuer <Icon.Arrow />
-                </button>
-              </div>
-            </>
+            </div>
           )}
 
           {/* ── ÉTAPE 2 — Inscription ── */}
           {step === 2 && (
-            <>
-              <div className="step-header">
-                <div className="step-badge"><Icon.Building /> Étape 2 sur 3</div>
-                <h2>Votre inscription académique</h2>
-                <p>Sélectionnez votre établissement et votre parcours pour l'année {CURRENT_YEAR}.</p>
-              </div>
+            <div key="s2" className="animate-fade-up">
+              <StepHeader
+                icon={<Icon.Building className="h-3.5 w-3.5" />}
+                badge="Étape 2 sur 3"
+                title="Votre inscription académique"
+                desc={`Sélectionnez votre établissement et votre parcours pour l'année ${CURRENT_YEAR}.`}
+              />
 
-              <div className="form-grid">
-                <div className="field">
-                  <label className="field-label">Établissement <span className="required">*</span></label>
-                  <select
-                    value={form.establishmentId}
-                    onChange={set("establishmentId")}
-                    className={errors.establishmentId ? "error" : ""}
-                    disabled={loadingEstab}
-                  >
-                    <option value="">{loadingEstab ? "Chargement..." : "Choisissez votre établissement"}</option>
-                    {establishments.map((e) => (
-                      <option key={e.id} value={e.id}>{e.name} ({e.code})</option>
-                    ))}
-                  </select>
-                  {errors.establishmentId && <span className="field-error">⚠ {errors.establishmentId}</span>}
-                </div>
+              <div className="grid gap-4">
+                <Field label="Établissement" required error={errors.establishmentId}>
+                  <SelectChevron>
+                    <select value={form.establishmentId} onChange={set("establishmentId")} disabled={loadingEstab} className={cx(inputBase, "pr-10 disabled:opacity-60", errors.establishmentId ? inputErr : inputOk)}>
+                      <option value="">{loadingEstab ? "Chargement..." : "Choisissez votre établissement"}</option>
+                      {establishments.map((e) => (
+                        <option key={e.id} value={e.id}>{e.name} ({e.code})</option>
+                      ))}
+                    </select>
+                  </SelectChevron>
+                </Field>
 
-                <div className="field">
-                  <label className="field-label">Parcours & Niveau <span className="required">*</span></label>
-                  <select
-                    value={form.programId}
-                    onChange={set("programId")}
-                    className={errors.programId ? "error" : ""}
-                    disabled={!form.establishmentId || loadingPrograms}
-                  >
-                    <option value="">
-                      {!form.establishmentId
-                        ? "Choisissez d'abord un établissement"
-                        : loadingPrograms
-                        ? "Chargement des parcours..."
-                        : "Choisissez votre parcours"}
-                    </option>
-                    {programs.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} — {p.level} ({formatAmount(p.amount)})
+                <Field label="Parcours & Niveau" required error={errors.programId}>
+                  <SelectChevron>
+                    <select value={form.programId} onChange={set("programId")} disabled={!form.establishmentId || loadingPrograms} className={cx(inputBase, "pr-10 disabled:opacity-60", errors.programId ? inputErr : inputOk)}>
+                      <option value="">
+                        {!form.establishmentId ? "Choisissez d'abord un établissement" : loadingPrograms ? "Chargement des parcours..." : "Choisissez votre parcours"}
                       </option>
-                    ))}
-                  </select>
-                  {errors.programId && <span className="field-error">⚠ {errors.programId}</span>}
-                </div>
+                      {programs.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name} — {p.level} ({formatAmount(p.amount)})</option>
+                      ))}
+                    </select>
+                  </SelectChevron>
+                </Field>
 
-                {/* Aperçu montant */}
                 {selectedProgram && (
-                  <div className="summary-card">
-                    <div className="summary-amount">
-                      <div className="summary-amount-label">Montant à régler</div>
-                      <div className="summary-amount-value">
-                        {new Intl.NumberFormat("fr-FR").format(selectedProgram.amount)}
-                        <span className="summary-amount-currency">F CFA</span>
-                      </div>
-                    </div>
-                    <div className="summary-rows">
-                      <div className="summary-row">
-                        <span className="summary-row-label">Établissement</span>
-                        <span className="summary-row-value">{establishment?.code}</span>
-                      </div>
-                      <div className="summary-row">
-                        <span className="summary-row-label">Parcours</span>
-                        <span className="summary-row-value">{selectedProgram.name}</span>
-                      </div>
-                      <div className="summary-row">
-                        <span className="summary-row-label">Niveau</span>
-                        <span className="summary-row-value">{selectedProgram.level}</span>
-                      </div>
-                      <div className="summary-row">
-                        <span className="summary-row-label">Année académique</span>
-                        <span className="summary-row-value">{CURRENT_YEAR}</span>
-                      </div>
-                    </div>
-                  </div>
+                  <SummaryCard
+                    label="Montant à régler"
+                    amount={selectedProgram.amount}
+                    rows={[
+                      ["Établissement", establishment?.code],
+                      ["Parcours", selectedProgram.name],
+                      ["Niveau", selectedProgram.level],
+                      ["Année académique", CURRENT_YEAR],
+                    ]}
+                  />
                 )}
               </div>
 
-              <div className="btn-row">
-                <button className="btn btn-ghost" onClick={() => setStep(1)}>
-                  <Icon.ArrowLeft /> Retour
-                </button>
-                <button className="btn btn-primary" onClick={nextStep}>
-                  Continuer <Icon.Arrow />
-                </button>
+              <div className="mt-7 flex gap-3">
+                <GhostButton onClick={() => setStep(1)}>
+                  <Icon.ArrowLeft className="h-4 w-4" /> Retour
+                </GhostButton>
+                <PrimaryButton onClick={nextStep}>
+                  Continuer <Icon.Arrow className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </PrimaryButton>
               </div>
-            </>
+            </div>
           )}
 
           {/* ── ÉTAPE 3 — Paiement ── */}
           {step === 3 && (
-            <>
-              <div className="step-header">
-                <div className="step-badge"><Icon.Phone /> Étape 3 sur 3</div>
-                <h2>Mode de paiement</h2>
-                <p>Choisissez votre opérateur Mobile Money et entrez le numéro à débiter.</p>
-              </div>
+            <div key="s3" className="animate-fade-up">
+              <StepHeader
+                icon={<Icon.Phone className="h-3.5 w-3.5" />}
+                badge="Étape 3 sur 3"
+                title="Mode de paiement"
+                desc="Choisissez votre opérateur Mobile Money et entrez le numéro à débiter."
+              />
 
-              <div className="form-grid">
-                {/* Sélecteur opérateur */}
-                <div className="field">
-                  <label className="field-label">Opérateur Mobile Money <span className="required">*</span></label>
-                  <div className="method-grid">
+              <div className="grid gap-4">
+                <Field label="Opérateur Mobile Money" required error={errors.paymentMethod}>
+                  <div className="grid grid-cols-2 gap-3">
                     {[
-                      { id: "MTN",    label: "MTN MoMo",    sub: "Mobile Money Congo",   logoClass: "method-mtn",    text: "MTN" },
-                      { id: "AIRTEL", label: "Airtel Money", sub: "Airtel Money Congo",  logoClass: "method-airtel", text: "AIRTEL" },
-                    ].map((m) => (
-                      <div
-                        key={m.id}
-                        className={`method-card ${form.paymentMethod === m.id ? "selected" : ""}`}
-                        onClick={() => { setForm((f) => ({ ...f, paymentMethod: m.id })); setErrors((e) => ({ ...e, paymentMethod: "" })); }}
-                      >
-                        <div className={`method-logo ${m.logoClass}`}>{m.text}</div>
-                        <div className="method-name">{m.label}</div>
-                        <div className="method-sub">{m.sub}</div>
-                      </div>
-                    ))}
+                      { id: "MTN", label: "MTN MoMo", sub: "Mobile Money Congo", bg: "bg-[#FFC300]", fg: "text-[#1A1A1A]", text: "MTN" },
+                      { id: "AIRTEL", label: "Airtel Money", sub: "Airtel Money Congo", bg: "bg-[#E8192C]", fg: "text-white", text: "AIRTEL" },
+                    ].map((m) => {
+                      const selected = form.paymentMethod === m.id;
+                      return (
+                        <button
+                          type="button"
+                          key={m.id}
+                          onClick={() => {
+                            setForm((f) => ({ ...f, paymentMethod: m.id }));
+                            setErrors((e) => ({ ...e, paymentMethod: "" }));
+                          }}
+                          className={cx(
+                            "group relative flex flex-col items-center gap-2.5 rounded-2xl border-2 bg-white p-4 text-center transition-all duration-200",
+                            selected ? "border-ink-900 bg-ink-900/[0.03] shadow-card" : "border-ink-900/10 hover:border-ink-900/40 hover:bg-ink-900/[0.02]"
+                          )}
+                        >
+                          <span className={cx("flex h-14 w-14 items-center justify-center rounded-xl font-display text-sm font-extrabold tracking-tight transition-transform group-hover:scale-105", m.bg, m.fg)}>
+                            {m.text}
+                          </span>
+                          <span className="text-[0.85rem] font-semibold text-ink-900">{m.label}</span>
+                          <span className="text-[0.72rem] text-ink-900/50">{m.sub}</span>
+                          <span className={cx("absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink-900 text-white transition-all", selected ? "scale-100 opacity-100" : "scale-50 opacity-0")}>
+                            <Icon.Check className="h-3 w-3" />
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  {errors.paymentMethod && <span className="field-error">⚠ {errors.paymentMethod}</span>}
-                </div>
+                </Field>
 
-                {/* Numéro Mobile Money */}
-                <div className="field">
-                  <label className="field-label">Numéro Mobile Money <span className="required">*</span></label>
+                <Field label="Numéro Mobile Money" required error={errors.paymentPhone}>
                   <input
                     type="tel"
                     placeholder={form.paymentMethod === "MTN" ? "ex : 06 868 XXXX" : "ex : 07 XXXX XXXX"}
                     value={form.paymentPhone}
                     onChange={set("paymentPhone")}
-                    className={errors.paymentPhone ? "error" : ""}
+                    className={cx(inputBase, errors.paymentPhone ? inputErr : inputOk)}
                   />
-                  {errors.paymentPhone && <span className="field-error">⚠ {errors.paymentPhone}</span>}
-                </div>
+                </Field>
 
-                {/* Récapitulatif */}
                 {selectedProgram && (
-                  <div className="summary-card">
-                    <div className="summary-amount">
-                      <div className="summary-amount-label">Total à payer</div>
-                      <div className="summary-amount-value">
-                        {new Intl.NumberFormat("fr-FR").format(selectedProgram.amount)}
-                        <span className="summary-amount-currency">F CFA</span>
-                      </div>
-                    </div>
-                    <div className="summary-rows">
-                      <div className="summary-row">
-                        <span className="summary-row-label">Étudiant</span>
-                        <span className="summary-row-value">{form.fullName || "—"}</span>
-                      </div>
-                      <div className="summary-row">
-                        <span className="summary-row-label">Matricule</span>
-                        <span className="summary-row-value">{form.matricule || "—"}</span>
-                      </div>
-                      <div className="summary-row">
-                        <span className="summary-row-label">Parcours</span>
-                        <span className="summary-row-value">{selectedProgram.name} — {selectedProgram.level}</span>
-                      </div>
-                    </div>
-                  </div>
+                  <SummaryCard
+                    label="Total à payer"
+                    amount={selectedProgram.amount}
+                    rows={[
+                      ["Étudiant", form.fullName || "—"],
+                      ["Parcours", `${selectedProgram.name} — ${selectedProgram.level}`],
+                    ]}
+                  />
                 )}
 
-                <div className="alert alert-warning">
-                  ⚠ Une notification va s'afficher sur votre téléphone. Entrez votre code PIN pour confirmer le paiement.
+                <div className="flex items-start gap-2.5 rounded-xl border border-gold/30 bg-gold-100/60 px-4 py-3 text-[0.85rem] text-[#78350F]">
+                  <Icon.Phone className="mt-0.5 h-4 w-4 flex-none text-gold-600" />
+                  <span>Une notification s'affichera sur votre téléphone. Entrez votre code PIN pour confirmer le paiement.</span>
                 </div>
 
                 {errors.submit && (
-                  <div className="alert" style={{ background: "#FEF2F2", border: "1px solid #FCA5A5", color: "#991B1B" }}>
-                    ❌ {errors.submit}
+                  <div className="flex items-start gap-2.5 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-[0.85rem] text-red-800">
+                    <Icon.Error className="mt-0.5 h-4 w-4 flex-none" /> {errors.submit}
                   </div>
                 )}
               </div>
 
-              <div className="btn-row">
-                <button className="btn btn-ghost" onClick={() => setStep(2)}>
-                  <Icon.ArrowLeft /> Retour
-                </button>
-                <button className="btn btn-primary" onClick={submitPayment} disabled={loading}>
+              <div className="mt-7 flex gap-3">
+                <GhostButton onClick={() => setStep(2)}>
+                  <Icon.ArrowLeft className="h-4 w-4" /> Retour
+                </GhostButton>
+                <PrimaryButton onClick={submitPayment} disabled={loading}>
                   {loading ? (
-                    <><div className="spinner" /> Envoi en cours...</>
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Envoi en cours...
+                    </>
                   ) : (
-                    <>Payer {selectedProgram ? formatAmount(selectedProgram.amount) : ""} <Icon.Arrow /></>
+                    <>
+                      Payer {selectedProgram ? formatAmount(selectedProgram.amount) : ""}
+                      <Icon.Arrow className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </>
                   )}
-                </button>
+                </PrimaryButton>
               </div>
-            </>
+            </div>
           )}
 
           {/* ── ÉTAPE 4 — Confirmation / Statut ── */}
           {step === 4 && (
-            <>
+            <div key="s4" className="flex flex-1 animate-fade-up flex-col items-center justify-center py-6 text-center">
               {/* En attente */}
               {paymentStatus === "PENDING" && (
-                <div className="status-screen">
-                  <div className="status-icon pending" style={{ color: "#D97706" }}>
-                    <Icon.Clock />
+                <>
+                  <div className="relative mb-7 flex h-20 w-20 items-center justify-center rounded-full bg-gold-100 text-gold-600">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-gold/40 animate-pulse-ring" />
+                    <Icon.Clock className="h-9 w-9" />
                   </div>
-                  <div className="status-title">En attente de confirmation</div>
-                  <p className="status-message">
-                    Une notification a été envoyée sur le numéro <strong>{form.paymentPhone}</strong>.<br />
-                    Entrez votre code PIN <strong>{form.paymentMethod} Mobile Money</strong> pour valider le paiement.
+                  <h2 className="font-display text-2xl font-bold text-ink-900">En attente de confirmation</h2>
+                  <p className="mt-3 max-w-sm text-[0.92rem] leading-relaxed text-ink-900/55">
+                    Une notification a été envoyée au <strong className="text-ink-900">{form.paymentPhone}</strong>. Entrez votre code PIN <strong className="text-ink-900">{form.paymentMethod} Mobile Money</strong> pour valider le paiement.
                   </p>
 
-                  <div style={{ margin: "2rem 0", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                    <div style={{ width: "200px", height: "4px", background: "#E5E7EB", borderRadius: "4px", overflow: "hidden" }}>
-                      <div style={{
-                        height: "100%",
-                        background: "var(--gold)",
-                        borderRadius: "4px",
-                        animation: "loading-bar 2s ease-in-out infinite",
-                        width: "40%",
-                      }} />
+                  <div className="mt-7 flex flex-col items-center gap-2">
+                    <div className="relative h-1 w-52 overflow-hidden rounded-full bg-ink-900/10">
+                      <div className="absolute inset-y-0 w-1/3 rounded-full bg-gradient-to-r from-gold-300 to-gold animate-shimmer" />
                     </div>
-                    <style>{`@keyframes loading-bar { 0%{transform:translateX(-100%)} 100%{transform:translateX(600%)} }`}</style>
-                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Vérification en cours…</span>
+                    <span className="text-[0.78rem] text-ink-900/45">Vérification en cours…</span>
                   </div>
 
-                  {/* Numéro de reçu provisoire */}
                   {paymentData?.receiptNumber && (
-                    <div className="alert alert-info" style={{ width: "100%", textAlign: "left" }}>
-                      🔖 Votre numéro de reçu provisoire : <strong>{paymentData.receiptNumber}</strong>
+                    <div className="mt-6 w-full rounded-xl border border-ink-900/10 bg-white px-4 py-3 text-left text-[0.85rem] text-ink-900/70">
+                      Numéro de reçu provisoire :{" "}
+                      <strong className="font-mono text-ink-900">{paymentData.receiptNumber}</strong>
                     </div>
                   )}
-                </div>
+                </>
               )}
 
               {/* Succès */}
               {paymentStatus === "SUCCESS" && (
-                <div className="status-screen">
-                  <div className="status-icon success" style={{ color: "var(--success)" }}>
-                    <Icon.Success />
+                <>
+                  <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-mint/10 text-mint">
+                    <Icon.Success className="h-10 w-10" />
                   </div>
-                  <div className="status-title" style={{ color: "var(--success)" }}>Paiement validé !</div>
-                  <p className="status-message">
-                    Votre paiement de <strong>{selectedProgram ? formatAmount(selectedProgram.amount) : ""}</strong> a été reçu avec succès. Téléchargez votre déclaration de recette officielle.
+                  <h2 className="font-display text-2xl font-bold text-mint">Paiement validé !</h2>
+                  <p className="mt-3 max-w-sm text-[0.92rem] leading-relaxed text-ink-900/55">
+                    Votre paiement de{" "}
+                    <strong className="text-ink-900">{selectedProgram ? formatAmount(selectedProgram.amount) : ""}</strong>{" "}
+                    a été reçu avec succès. Téléchargez votre déclaration de recette officielle.
                   </p>
 
                   {/* Carte reçu */}
-                  <div className="receipt-card">
-                    <div className="receipt-card-header">
+                  <div className="mt-6 w-full overflow-hidden rounded-2xl border border-ink-900/10 bg-white text-left shadow-card">
+                    <div className="flex items-start justify-between border-b border-dashed border-ink-900/15 px-5 py-4">
                       <div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "2px" }}>Déclaration de recette</div>
-                        <div className="receipt-number">{paymentData?.receiptNumber}</div>
+                        <div className="text-[0.72rem] uppercase tracking-wide text-ink-900/45">Déclaration de recette</div>
+                        <div className="mt-0.5 font-mono text-[0.92rem] font-bold tracking-wide text-ink-900">{paymentData?.receiptNumber}</div>
                       </div>
-                      <div className="receipt-badge">
-                        <Icon.Check /> PAYÉ
-                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-mint/10 px-2.5 py-1 text-[0.72rem] font-bold text-mint">
+                        <Icon.Check className="h-3 w-3" /> PAYÉ
+                      </span>
                     </div>
-                    <div className="receipt-rows">
+                    <div className="space-y-2.5 px-5 py-4">
                       {[
-                        ["Étudiant",        form.fullName],
-                        ["Matricule",       form.matricule],
-                        ["Établissement",   establishment?.name || "—"],
-                        ["Parcours",        selectedProgram ? `${selectedProgram.name} — ${selectedProgram.level}` : "—"],
-                        ["Montant réglé",   selectedProgram ? formatAmount(selectedProgram.amount) : "—"],
+                        ["Étudiant", form.fullName],
+                        ["Établissement", establishment?.name || "—"],
+                        ["Parcours", selectedProgram ? `${selectedProgram.name} — ${selectedProgram.level}` : "—"],
+                        ["Montant réglé", selectedProgram ? formatAmount(selectedProgram.amount) : "—"],
                         ["Mode de paiement", form.paymentMethod + " Mobile Money"],
                         ["Année académique", CURRENT_YEAR],
                       ].map(([label, value]) => (
-                        <div className="receipt-row" key={label}>
-                          <span className="receipt-row-label">{label}</span>
-                          <span className="receipt-row-value">{value}</span>
+                        <div className="flex items-center justify-between gap-4 text-[0.85rem]" key={label}>
+                          <span className="text-ink-900/50">{label}</span>
+                          <span className="text-right font-medium text-ink-900">{value}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="btn-row" style={{ width: "100%" }}>
-                    <a
-                      href={getReceiptUrl(paymentData?.receiptNumber)}
-                      className="btn btn-success"
-                      download
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <Icon.Download /> Télécharger mon reçu PDF
-                    </a>
-                  </div>
-
-                  <p style={{ marginTop: "1rem", fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                  <a
+                    href={getReceiptUrl(paymentData?.receiptNumber)}
+                    download
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-mint px-6 py-3.5 text-[0.94rem] font-semibold text-white shadow-card transition hover:brightness-110 active:translate-y-px"
+                  >
+                    <Icon.Download className="h-4 w-4" /> Télécharger mon reçu PDF
+                  </a>
+                  <p className="mt-4 text-[0.82rem] text-ink-900/45">
                     Présentez ce document à votre établissement pour obtenir votre attestation d'inscription.
                   </p>
-                </div>
+                </>
               )}
 
               {/* Échec */}
               {paymentStatus === "FAILED" && (
-                <div className="status-screen">
-                  <div className="status-icon error" style={{ color: "var(--error)" }}>
-                    <Icon.Error />
+                <>
+                  <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-50 text-red-600">
+                    <Icon.Error className="h-10 w-10" />
                   </div>
-                  <div className="status-title" style={{ color: "var(--error)" }}>Paiement échoué</div>
-                  <p className="status-message">
+                  <h2 className="font-display text-2xl font-bold text-red-600">Paiement échoué</h2>
+                  <p className="mt-3 max-w-sm text-[0.92rem] leading-relaxed text-ink-900/55">
                     Le paiement n'a pas pu être traité. Cela peut être dû à un solde insuffisant ou à un délai de confirmation dépassé.
                   </p>
-                  <div className="btn-row" style={{ width: "100%", marginTop: "2rem" }}>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => { setStep(3); setPaymentStatus(null); setPaymentData(null); }}
-                    >
-                      <Icon.ArrowLeft /> Réessayer
-                    </button>
-                  </div>
-                </div>
+                  <PrimaryButton
+                    className="mt-7 max-w-xs"
+                    onClick={() => {
+                      setStep(3);
+                      setPaymentStatus(null);
+                      setPaymentData(null);
+                    }}
+                  >
+                    <Icon.ArrowLeft className="h-4 w-4" /> Réessayer
+                  </PrimaryButton>
+                </>
               )}
-            </>
+            </div>
           )}
 
+          {/* Pied de page */}
+          <div className="mt-auto pt-9 text-center text-[0.74rem] text-ink-900/35">
+            FloPay · Paiement sécurisé des frais de scolarité — UMG · {CURRENT_YEAR}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ── Sous-composants UI ─────────────────────────────────────────────────────────
+function StepHeader({ icon, badge, title, desc }) {
+  return (
+    <div className="mb-7">
+      <div className="mb-2.5 inline-flex items-center gap-1.5 rounded-full bg-gold-100 px-3 py-1 text-[0.72rem] font-bold uppercase tracking-wide text-gold-600">
+        {icon} {badge}
+      </div>
+      <h2 className="font-display text-[1.55rem] font-bold leading-tight text-ink-900">{title}</h2>
+      <p className="mt-1.5 text-[0.9rem] leading-relaxed text-ink-900/55">{desc}</p>
+    </div>
+  );
+}
+
+function Field({ label, required, error, children }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className={labelCls}>
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </span>
+      {children}
+      {error && (
+        <span className="flex items-center gap-1 text-[0.78rem] font-medium text-red-600">
+          <Icon.Error className="h-3.5 w-3.5" /> {error}
+        </span>
+      )}
+    </label>
+  );
+}
+
+function SelectChevron({ children }) {
+  return (
+    <div className="relative">
+      {children}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-900/45" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </div>
+  );
+}
+
+function SummaryCard({ label, amount, rows }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-ink-950 p-6 shadow-card">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(90% 80% at 90% 0%, rgba(232,160,32,0.18), transparent 50%)",
+        }}
+      />
+      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full border-[28px] border-gold/10" />
+      <div className="relative">
+        <div className="text-[0.74rem] uppercase tracking-[0.08em] text-white/45">{label}</div>
+        <div className="mt-1 font-mono text-[2.4rem] font-bold leading-none tabular text-gold-300">
+          {new Intl.NumberFormat("fr-FR").format(amount)}
+          <span className="ml-1.5 text-[1.05rem] font-medium text-white/55">F CFA</span>
+        </div>
+        <div className="mt-5 space-y-2 border-t border-white/10 pt-4">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex items-center justify-between gap-4">
+              <span className="text-[0.82rem] text-white/45">{k}</span>
+              <span className="text-right text-[0.85rem] font-medium text-white/90">{v}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
+  );
+}
+
+function PrimaryButton({ children, className, ...props }) {
+  return (
+    <button
+      {...props}
+      className={cx(
+        "group inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-ink-900 px-6 py-3.5 text-[0.94rem] font-semibold text-white shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:bg-ink-800 active:translate-y-0 disabled:pointer-events-none disabled:opacity-50",
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function GhostButton({ children, className, ...props }) {
+  return (
+    <button
+      {...props}
+      className={cx(
+        "inline-flex items-center justify-center gap-2 rounded-xl border border-ink-900/15 bg-transparent px-5 py-3.5 text-[0.94rem] font-semibold text-ink-900/65 transition-all duration-200 hover:border-ink-900/35 hover:bg-ink-900/5 hover:text-ink-900",
+        className
+      )}
+    >
+      {children}
+    </button>
   );
 }
