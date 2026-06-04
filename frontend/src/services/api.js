@@ -13,9 +13,13 @@ export const getEstablishments = () =>
     return r.data.data
   });
 
-export const getPrograms = (establishmentId, academicYear = "2024-2025") =>
+// Sans academicYear → renvoie TOUS les programmes de l'établissement
+// (on dérive années / niveaux / parcours côté client pour les selects en cascade)
+export const getPrograms = (establishmentId, academicYear) =>
   api
-    .get(`/establishments/${establishmentId}/programs`, { params: { academicYear } })
+    .get(`/establishments/${establishmentId}/programs`, {
+      params: academicYear ? { academicYear } : {},
+    })
     .then((r) => r.data.data);
 
 export const initiatePayment = (payload) =>

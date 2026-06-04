@@ -20,7 +20,7 @@ class PdfService {
    * @returns {string}         - Chemin absolu du fichier PDF généré
    */
   async generateReceipt(payment) {
-    const { student, program, receiptNumber, amount, paidAt, paymentMethod, phoneNumber } = payment;
+    const { student, program, receiptNumber, amount, academicYear, paidAt, paymentMethod, phoneNumber } = payment;
     const establishment = student.establishment;
 
     const filename = `receipt_${receiptNumber.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
@@ -104,12 +104,13 @@ class PdfService {
       const col2   = 230;
       const lineH  = 18;
 
+      const civilite = student.gender === "F" ? "Mme" : "M.";
       const fields = [
-        ["Nom et Prénom(s)", student.fullName],
+        ["Nom et Prénom(s)", `${civilite} ${student.lastName} ${student.firstName}`],
         ["Établissement",    establishment.name],
         ["Parcours Type",    program.name],
         ["Niveau",          program.level],
-        ["Année Académique", program.academicYear],
+        ["Année Académique", academicYear],
       ];
 
       fields.forEach(([label, value], i) => {

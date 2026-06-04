@@ -15,15 +15,20 @@ const validate = (req, res, next) => {
 
 const paymentRules = [
   // matricule : non saisi par l'étudiant — généré côté backend
-  body("fullName")
-    .trim().notEmpty().withMessage("Le nom complet est requis")
-    .isLength({ min: 3 }).withMessage("Nom trop court"),
+  body("lastName")
+    .trim().notEmpty().withMessage("Le nom est requis"),
+  body("firstName")
+    .trim().notEmpty().withMessage("Le(s) prénom(s) est/sont requis"),
+  body("gender")
+    .isIn(["M", "F"]).withMessage("Sexe invalide (M ou F)"),
   body("phone")
     .trim().notEmpty().withMessage("Le téléphone est requis"),
   body("establishmentId")
     .isUUID().withMessage("ID établissement invalide"),
   body("programId")
     .isUUID().withMessage("ID programme invalide"),
+  body("academicYear")
+    .matches(/^\d{4}-\d{4}$/).withMessage("Année académique invalide (ex: 2025-2026)"),
   body("paymentMethod")
     .isIn(["MTN", "AIRTEL"]).withMessage("Méthode de paiement invalide (MTN ou AIRTEL)"),
   body("paymentPhone")
@@ -45,8 +50,6 @@ const programRules = [
   body("name").trim().notEmpty().withMessage("Nom du parcours requis"),
   body("level").trim().notEmpty().withMessage("Niveau requis"),
   body("amount").isFloat({ min: 1 }).withMessage("Montant invalide"),
-  body("academicYear")
-    .matches(/^\d{4}-\d{4}$/).withMessage("Année académique invalide (ex: 2024-2025)"),
   body("establishmentId").isUUID().withMessage("ID établissement invalide"),
 ];
 

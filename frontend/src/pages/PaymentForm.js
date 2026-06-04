@@ -85,7 +85,14 @@ const STEPS = [
   { id: 3, label: "Paiement" },
 ];
 
-const CURRENT_YEAR = "2024-2025";
+// Années académiques proposées au paiement (année courante + 2 précédentes)
+const ACADEMIC_YEARS = (() => {
+  const now = new Date();
+  // l'année académique démarre vers août / septembre
+  const start = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  return [0, 1, 2].map((i) => `${start - i}-${start - i + 1}`);
+})();
+const CURRENT_YEAR = ACADEMIC_YEARS[0];
 
 const FEATURES = [
   "Paiement 100 % sécurisé, sans file d'attente",
@@ -108,11 +115,15 @@ export default function PaymentForm() {
   const [step, setStep] = useState(1);
 
   const [form, setForm] = useState({
-    fullName: "",
+    lastName: "",
+    firstName: "",
+    gender: "",
     birthDate: "",
     birthPlace: "",
     phone: "",
     establishmentId: "",
+    academicYear: "",
+    level: "",
     programId: "",
     paymentMethod: "",
     paymentPhone: "",
@@ -148,9 +159,9 @@ export default function PaymentForm() {
       return;
     }
     setLoadingPrograms(true);
-    setForm((f) => ({ ...f, programId: "" }));
+    setForm((f) => ({ ...f, level: "", programId: "" }));
     setSelectedProgram(null);
-    getPrograms(form.establishmentId, CURRENT_YEAR)
+    getPrograms(form.establishmentId)   // tous les programmes — filtrés côté client
       .then(setPrograms)
       .catch(() => {})
       .finally(() => setLoadingPrograms(false));
@@ -201,11 +212,15 @@ export default function PaymentForm() {
   const validateStep = (s) => {
     const errs = {};
     if (s === 1) {
-      if (!form.fullName.trim()) errs.fullName = "Le nom complet est requis";
+      if (!form.lastName.trim()) errs.lastName = "Le nom est requis";
+      if (!form.firstName.trim()) errs.firstName = "Le(s) prénom(s) est/sont requis";
+      if (!form.gender) errs.gender = "Choisissez votre sexe";
       if (!form.phone.trim()) errs.phone = "Le téléphone est requis";
     }
     if (s === 2) {
       if (!form.establishmentId) errs.establishmentId = "Choisissez un établissement";
+      if (!form.academicYear) errs.academicYear = "Choisissez l'année académique";
+      if (!form.level) errs.level = "Choisissez votre niveau";
       if (!form.programId) errs.programId = "Choisissez un parcours";
     }
     if (s === 3) {
@@ -248,6 +263,20 @@ export default function PaymentForm() {
   };
 
   const establishment = establishments.find((e) => e.id === form.establishmentId);
+
+  // ── Cascade niveau → parcours (l'année est indépendante du programme) ───────
+  const availableLevels = form.establishmentId
+    ? [...new Set(programs.map((p) => p.level))].sort()
+    : [];
+  const availableParcours = form.level
+    ? programs.filter((p) => p.level === form.level)
+    : [];
+
+  // Choisir un niveau réinitialise le parcours
+  const setLevel = (e) => {
+    setForm((f) => ({ ...f, level: e.target.value, programId: "" }));
+    setErrors((er) => ({ ...er, level: "" }));
+  };
 
   // ──────────────────────────────────────────────────────────────────────────
   return (
@@ -404,18 +433,33 @@ export default function PaymentForm() {
               />
 
               <div className="grid gap-4">
-                <Field label="Nom et Prénom(s)" required error={errors.fullName}>
-                  <input type="text" placeholder="ex : YOUNDOUKA KOMBILA Davy Sagesse" value={form.fullName} onChange={set("fullName")} className={cx(inputBase, errors.fullName ? inputErr : inputOk)} />
-                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Nom" required error={errors.lastName}>
+                    <input type="text" placeholder="ex : YOUNDOUKA KOMBILA" value={form.lastName} onChange={set("lastName")} className={cx(inputBase, errors.lastName ? inputErr : inputOk)} />
+                  </Field>
+                  <Field label="Prénom(s)" required error={errors.firstName}>
+                    <input type="text" placeholder="ex : Davy Sagesse" value={form.firstName} onChange={set("firstName")} className={cx(inputBase, errors.firstName ? inputErr : inputOk)} />
+                  </Field>
+                </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Sexe" required error={errors.gender}>
+                    <SelectChevron>
+                      <select value={form.gender} onChange={set("gender")} className={cx(inputBase, "pr-10", errors.gender ? inputErr : inputOk)}>
+                        <option value="">Choisissez</option>
+                        <option value="M">Masculin</option>
+                        <option value="F">Féminin</option>
+                      </select>
+                    </SelectChevron>
+                  </Field>
                   <Field label="Date de naissance">
                     <input type="date" value={form.birthDate} onChange={set("birthDate")} className={cx(inputBase, inputOk)} />
                   </Field>
-                  <Field label="Lieu de naissance">
-                    <input type="text" placeholder="ex : Pointe-Noire" value={form.birthPlace} onChange={set("birthPlace")} className={cx(inputBase, inputOk)} />
-                  </Field>
                 </div>
+
+                <Field label="Lieu de naissance">
+                  <input type="text" placeholder="ex : Pointe-Noire" value={form.birthPlace} onChange={set("birthPlace")} className={cx(inputBase, inputOk)} />
+                </Field>
 
                 <Field label="Téléphone personnel" required error={errors.phone}>
                   <input type="tel" placeholder="ex : 06 878 6678" value={form.phone} onChange={set("phone")} className={cx(inputBase, errors.phone ? inputErr : inputOk)} />
@@ -437,7 +481,7 @@ export default function PaymentForm() {
                 icon={<Icon.Building className="h-3.5 w-3.5" />}
                 badge="Étape 2 sur 3"
                 title="Votre inscription académique"
-                desc={`Sélectionnez votre établissement et votre parcours pour l'année ${CURRENT_YEAR}.`}
+                desc="Sélectionnez votre établissement, l'année à payer, votre niveau puis votre parcours."
               />
 
               <div className="grid gap-4">
@@ -452,14 +496,40 @@ export default function PaymentForm() {
                   </SelectChevron>
                 </Field>
 
-                <Field label="Parcours & Niveau" required error={errors.programId}>
+                <Field label="Niveau" required error={errors.level}>
                   <SelectChevron>
-                    <select value={form.programId} onChange={set("programId")} disabled={!form.establishmentId || loadingPrograms} className={cx(inputBase, "pr-10 disabled:opacity-60", errors.programId ? inputErr : inputOk)}>
+                    <select value={form.level} onChange={setLevel} disabled={!form.establishmentId || loadingPrograms} className={cx(inputBase, "pr-10 disabled:opacity-60", errors.level ? inputErr : inputOk)}>
                       <option value="">
-                        {!form.establishmentId ? "Choisissez d'abord un établissement" : loadingPrograms ? "Chargement des parcours..." : "Choisissez votre parcours"}
+                        {!form.establishmentId ? "Choisissez d'abord un établissement" : loadingPrograms ? "Chargement..." : "Choisissez votre niveau"}
                       </option>
-                      {programs.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name} — {p.level} ({formatAmount(p.amount)})</option>
+                      {availableLevels.map((l) => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                  </SelectChevron>
+                </Field>
+
+                <Field label="Parcours" required error={errors.programId}>
+                  <SelectChevron>
+                    <select value={form.programId} onChange={set("programId")} disabled={!form.level} className={cx(inputBase, "pr-10 disabled:opacity-60", errors.programId ? inputErr : inputOk)}>
+                      <option value="">
+                        {!form.level ? "Choisissez d'abord le niveau" : "Choisissez votre parcours"}
+                      </option>
+                      {availableParcours.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name} ({formatAmount(p.amount)})</option>
+                      ))}
+                    </select>
+                  </SelectChevron>
+                </Field>
+
+                <Field label="Année académique à payer" required error={errors.academicYear}>
+                  <SelectChevron>
+                    <select value={form.academicYear} onChange={set("academicYear")} disabled={!form.establishmentId} className={cx(inputBase, "pr-10 disabled:opacity-60", errors.academicYear ? inputErr : inputOk)}>
+                      <option value="">
+                        {!form.establishmentId ? "Choisissez d'abord un établissement" : "Choisissez l'année à payer"}
+                      </option>
+                      {ACADEMIC_YEARS.map((y) => (
+                        <option key={y} value={y}>{y}</option>
                       ))}
                     </select>
                   </SelectChevron>
@@ -473,7 +543,7 @@ export default function PaymentForm() {
                       ["Établissement", establishment?.code],
                       ["Parcours", selectedProgram.name],
                       ["Niveau", selectedProgram.level],
-                      ["Année académique", CURRENT_YEAR],
+                      ["Année académique", form.academicYear],
                     ]}
                   />
                 )}
@@ -550,7 +620,7 @@ export default function PaymentForm() {
                     label="Total à payer"
                     amount={selectedProgram.amount}
                     rows={[
-                      ["Étudiant", form.fullName || "—"],
+                      ["Étudiant", `${form.lastName} ${form.firstName}`.trim() || "—"],
                       ["Parcours", `${selectedProgram.name} — ${selectedProgram.level}`],
                     ]}
                   />
@@ -646,12 +716,12 @@ export default function PaymentForm() {
                     </div>
                     <div className="space-y-2.5 px-5 py-4">
                       {[
-                        ["Étudiant", form.fullName],
+                        ["Étudiant", `${form.lastName} ${form.firstName}`.trim()],
                         ["Établissement", establishment?.name || "—"],
                         ["Parcours", selectedProgram ? `${selectedProgram.name} — ${selectedProgram.level}` : "—"],
                         ["Montant réglé", selectedProgram ? formatAmount(selectedProgram.amount) : "—"],
                         ["Mode de paiement", form.paymentMethod + " Mobile Money"],
-                        ["Année académique", CURRENT_YEAR],
+                        ["Année académique", form.academicYear || "—"],
                       ].map(([label, value]) => (
                         <div className="flex items-center justify-between gap-4 text-[0.85rem]" key={label}>
                           <span className="text-ink-900/50">{label}</span>

@@ -30,7 +30,6 @@ model Program {
   name            String                          // ex: "Physique", "Informatique"
   level           String                          // ex: "Licence 1", "Master 2"
   amount          Decimal  @db.Decimal(10, 2)     // frais de scolarité
-  academicYear    String                          // ex: "2024-2025"
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -47,7 +46,9 @@ model Program {
 model Student {
   id              String   @id @default(uuid())
   matricule       String   @unique     // identifiant interne auto-généré (jamais saisi par l'étudiant)
-  fullName        String
+  lastName        String                // Nom
+  firstName       String                // Prénom(s)
+  gender          Gender                // Sexe
   birthDate       DateTime?
   birthPlace      String?
   phone           String
@@ -120,6 +121,11 @@ model Admin {
 }
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
+enum Gender {
+  M
+  F
+}
+
 enum PaymentMethod {
   MTN
   AIRTEL

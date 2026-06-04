@@ -45,7 +45,6 @@ async function main() {
 
   // ── Parcours FST ────────────────────────────────────────────────────────────
   const fst = establishments.find((e) => e.code === "FST");
-  const YEAR = "2024-2025";
 
   const fstPrograms = [
     { name: "Informatique", level: "Licence 1", amount: 10750 },
@@ -60,16 +59,12 @@ async function main() {
   ];
 
   for (const p of fstPrograms) {
-    await prisma.program.upsert({
-      where: {
-        // compound unique — on simule avec findFirst
-        id: (await prisma.program.findFirst({
-          where: { name: p.name, level: p.level, establishmentId: fst.id, academicYear: YEAR },
-        }))?.id ?? "nonexistent",
-      },
-      update: {},
-      create: { ...p, academicYear: YEAR, establishmentId: fst.id },
+    const existing = await prisma.program.findFirst({
+      where: { name: p.name, level: p.level, establishmentId: fst.id },
     });
+    if (!existing) {
+      await prisma.program.create({ data: { ...p, establishmentId: fst.id } });
+    }
   }
 
   console.log(`✅ Parcours FST créés`);

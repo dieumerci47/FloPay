@@ -21,18 +21,12 @@ const getEstablishments = async (req, res) => {
 // ── Programmes d'un établissement (public) ────────────────────────────────────
 const getProgramsByEstablishment = async (req, res) => {
   const { establishmentId } = req.params;
-  const { academicYear }    = req.query;
-console.log('establishmentId',establishmentId);
-console.log('academicYear',academicYear);
 
   try {
-    const where = { establishmentId, isActive: true };
-    if (academicYear) where.academicYear = academicYear;
-
     const programs = await prisma.program.findMany({
-      where,
-      orderBy: [{ name: "asc" }, { level: "asc" }],
-      select: { id: true, name: true, level: true, amount: true, academicYear: true },
+      where: { establishmentId, isActive: true },
+      orderBy: [{ level: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, level: true, amount: true },
     });
 
     const data = programs.map((p) => ({ ...p, amount: Number(p.amount) }));
@@ -61,13 +55,13 @@ const createEstablishment = async (req, res) => {
 
 // ── Créer un programme (admin) ────────────────────────────────────────────────
 const createProgram = async (req, res) => {
-  const { name, level, amount, academicYear, establishmentId } = req.body;
+  const { name, level, amount, establishmentId } = req.body;
   try {
     const establishment = await prisma.establishment.findUnique({ where: { id: establishmentId } });
     if (!establishment) return error(res, "Établissement non trouvé", 404);
 
     const program = await prisma.program.create({
-      data: { name, level, amount, academicYear, establishmentId },
+      data: { name, level, amount, establishmentId },
     });
     return success(res, { ...program, amount: Number(program.amount) }, "Programme créé", 201);
 

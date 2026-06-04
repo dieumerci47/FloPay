@@ -58,20 +58,23 @@ const searchByMatricule = async (req, res) => {
       student: {
         id:            student.id,
         matricule:     student.matricule,
-        fullName:      student.fullName,
+        lastName:      student.lastName,
+        firstName:     student.firstName,
+        fullName:      `${student.lastName} ${student.firstName}`,
+        gender:        student.gender,
         birthDate:     student.birthDate,
         birthPlace:    student.birthPlace,
         phone:         student.phone,
         establishment: student.establishment.name,
         program:       student.program.name,
         level:         student.program.level,
-        academicYear:  student.program.academicYear,
       },
       paymentStatus:  latestSuccess ? "PAYÉ" : "NON PAYÉ",
       latestPayment:  latestSuccess
         ? {
             receiptNumber: latestSuccess.receiptNumber,
             amount:        Number(latestSuccess.amount),
+            academicYear:  latestSuccess.academicYear,
             paidAt:        latestSuccess.paidAt,
             paymentMethod: latestSuccess.paymentMethod,
             hasReceipt:    !!latestSuccess.receipt,
@@ -80,6 +83,7 @@ const searchByMatricule = async (req, res) => {
       allPayments: student.payments.map((p) => ({
         receiptNumber: p.receiptNumber,
         amount:        Number(p.amount),
+        academicYear:  p.academicYear,
         status:        p.status,
         method:        p.paymentMethod,
         createdAt:     p.createdAt,
@@ -121,8 +125,11 @@ const searchByReceipt = async (req, res) => {
       academicYear:  payment.academicYear,
       hasReceipt:    !!payment.receipt,
       student: {
-        fullName:      payment.student.fullName,
-        matricule:     payment.student.matricule,   // peut être null
+        lastName:      payment.student.lastName,
+        firstName:     payment.student.firstName,
+        fullName:      `${payment.student.lastName} ${payment.student.firstName}`,
+        gender:        payment.student.gender,
+        matricule:     payment.student.matricule,
         birthDate:     payment.student.birthDate,
         birthPlace:    payment.student.birthPlace,
         phone:         payment.student.phone,
@@ -169,7 +176,7 @@ const listPayments = async (req, res) => {
     const data = payments.map((p) => ({
       id:            p.id,
       receiptNumber: p.receiptNumber,
-      student:       p.student.fullName,
+      student:       `${p.student.lastName} ${p.student.firstName}`,
       matricule:     p.student.matricule,
       establishment: p.student.establishment.name,
       program:       p.program.name,
@@ -242,7 +249,7 @@ const getDashboardStats = async (req, res) => {
       })),
       recentPayments: recentPayments.map((p) => ({
         receiptNumber: p.receiptNumber,
-        student:       p.student.fullName,
+        student:       `${p.student.lastName} ${p.student.firstName}`,
         matricule:     p.student.matricule,
         amount:        Number(p.amount),
         method:        p.paymentMethod,

@@ -9,8 +9,8 @@ const logger                  = require("../utils/logger");
 
 // ── Initier un paiement ───────────────────────────────────────────────────────
 const initiatePayment = async (req, res) => {
-  const { fullName, birthDate, birthPlace, phone,
-          establishmentId, programId, paymentMethod, paymentPhone } = req.body;
+  const { lastName, firstName, gender, birthDate, birthPlace, phone,
+          establishmentId, programId, academicYear, paymentMethod, paymentPhone } = req.body;
 
   try {
     // 1. Récupérer le programme (contient le montant)
@@ -20,13 +20,13 @@ const initiatePayment = async (req, res) => {
     });
     if (!program) return error(res, "Programme introuvable", 404);
 
-    // 2. Vérifier que l'étudiant n'a pas déjà payé ce parcours cette année.
-    //    Identité = téléphone + nom (pas de matricule fiable côté UMG).
+    // 2. Vérifier que l'étudiant n'a pas déjà payé ce parcours pour l'année choisie.
+    //    Identité = téléphone + nom + prénom. L'année est choisie par l'étudiant.
     const alreadyPaid = await prisma.payment.findFirst({
       where: {
-        student: { phone, fullName },
+        student: { phone, lastName, firstName },
         programId,
-        academicYear: program.academicYear,
+        academicYear,
         status: "SUCCESS",
       },
     });
@@ -34,13 +34,15 @@ const initiatePayment = async (req, res) => {
       return error(res, "Ce numéro a déjà un paiement validé pour ce parcours cette année académique", 409);
     }
 
-    // 3. Créer ou retrouver l'étudiant (identité = téléphone + nom)
-    let student = await prisma.student.findFirst({ where: { phone, fullName } });
+    // 3. Créer ou retrouver l'étudiant (identité = téléphone + nom + prénom)
+    let student = await prisma.student.findFirst({ where: { phone, lastName, firstName } });
     if (!student) {
       student = await prisma.student.create({
         data: {
           matricule: generateMatricule(),   // identifiant interne auto-généré
-          fullName,
+          lastName,
+          firstName,
+          gender,
           birthDate: birthDate ? new Date(birthDate) : null,
           birthPlace,
           phone,
@@ -61,7 +63,7 @@ const initiatePayment = async (req, res) => {
         currency:      "XAF",
         paymentMethod,
         phoneNumber:   PawapayService_formatPhone(paymentPhone),
-        academicYear:  program.academicYear,
+        academicYear,
         studentId:     student.id,
         programId:     program.id,
       },
@@ -75,7 +77,7 @@ const initiatePayment = async (req, res) => {
       amount:        Number(program.amount),
       method:        paymentMethod,
       receiptNumber,
-      description:   `Scolarite UMG ${program.academicYear} - ${student.fullName}`,
+      description:   `Scolarite UMG ${academicYear} - ${student.lastName} ${student.firstName}`,
     });
 
     // 7. Mettre à jour le paiement avec l'ID PawaPay
@@ -84,7 +86,7 @@ const initiatePayment = async (req, res) => {
       data:  { pawapayDepositId: depositId },
     });
 
-    logger.info(`💳 Paiement initié: ${receiptNumber} | Étudiant: ${student.fullName} (${phone})`);
+    logger.info(`💳 Paiement initié: ${receiptNumber} | Étudiant: ${student.lastName} ${student.firstName} (${phone})`);
 
     return success(res, {
       paymentId:     payment.id,
