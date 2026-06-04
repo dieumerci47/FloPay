@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:3000/api",
+  baseURL: process.env.REACT_APP_API_URL || "http://192.168.100.254:3000/api",
   timeout: 30000,
   headers: { "Content-Type": "application/json" },
 });
@@ -29,4 +29,8 @@ export const getPaymentStatus = (paymentId) =>
   api.get(`/payments/${paymentId}/status`).then((r) => r.data.data);
 
 export const getReceiptUrl = (receiptNumber) =>
-  `${process.env.REACT_APP_API_URL || "http://localhost:3000/api"}/payments/${receiptNumber}/receipt`;
+  `${process.env.REACT_APP_API_URL || "http://192.168.100.254:3000/api"}/payments/${receiptNumber}/receipt`;
+
+// Vérification publique d'un reçu (scan du QR code)
+export const verifyReceipt = (receiptNumber) =>
+  api.get(`/payments/verify/${receiptNumber}`).then((r) => r.data.data);

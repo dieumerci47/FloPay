@@ -15,6 +15,7 @@ const { error }      = require("./utils/response");
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+// const IP="192.168.100.254"
 
 // ── Sécurité ──────────────────────────────────────────────────────────────────
 app.use(helmet());
@@ -25,7 +26,8 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",
   "http://localhost:3001",
-  "http://localhost:3000"
+  "http://localhost:3000",
+  "https://dugout-cornbread-headscarf.ngrok-free.dev"
 ].filter(Boolean);
 
 app.use(cors({

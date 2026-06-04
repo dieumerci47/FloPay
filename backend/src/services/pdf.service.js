@@ -1,5 +1,6 @@
 // src/services/pdf.service.js
 const PDFDocument = require("pdfkit");
+const QRCode = require("qrcode");
 const fs = require("fs");
 const path = require("path");
 const logger = require("../utils/logger");
@@ -13,8 +14,8 @@ if (!fs.existsSync(OUTPUT_DIR)) {
 
 class PdfService {
   /**
-   * Génère la déclaration de recette en PDF
-   * Reproduit fidèlement le format du document officiel UMG
+   * Génère la déclaration de recette en PDF.
+   * Reproduit la mise en page du document officiel UMG (administratif, Times, N&B).
    *
    * @param {object} payment  - Objet payment avec student, program, establishment
    * @returns {string}         - Chemin absolu du fichier PDF généré
@@ -26,184 +27,144 @@ class PdfService {
     const filename = `receipt_${receiptNumber.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
     const filepath = path.join(OUTPUT_DIR, filename);
 
+    // QR de vérification : encode une URL si RECEIPT_VERIFY_BASE est défini,
+    // sinon la référence du reçu (que la scolarité peut rechercher dans l'admin).
+    const verifyTarget = process.env.RECEIPT_VERIFY_BASE
+      ? `${process.env.RECEIPT_VERIFY_BASE.replace(/\/$/, "")}/${receiptNumber}`
+      : receiptNumber;
+    let qrBuffer = null;
+    try {
+      qrBuffer = await QRCode.toBuffer(verifyTarget, { errorCorrectionLevel: "M", margin: 1, width: 220 });
+    } catch (e) {
+      logger.warn(`QR non généré pour ${receiptNumber}: ${e.message}`);
+    }
+
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: "A4", margin: 50 });
       const stream = fs.createWriteStream(filepath);
-
       doc.pipe(stream);
 
-      // ── Couleurs & constantes ──────────────────────────────────────────────
-      const NAVY   = "#1A3C6E";
-      const AMBER  = "#F5A623";
-      const GREY   = "#F5F5F5";
-      const BLACK  = "#1C1C1C";
-      const W      = doc.page.width - 100; // largeur utile
+      // ── Constantes ─────────────────────────────────────────────────────────
+      const BLACK = "#000000";
+      const GREY  = "#555555";
+      const W     = doc.page.width - 100;     // largeur utile
+      const LEFT  = 50;
+      const RIGHT = 50 + W;
+      const CX    = doc.page.width / 2;        // centre horizontal
 
-      // ── EN-TÊTE ───────────────────────────────────────────────────────────
-      // Bannière bleue
-      doc.rect(50, 40, W, 70).fill(NAVY);
-
-      doc
-        .fillColor("white")
-        .fontSize(18)
-        .font("Helvetica-Bold")
-        .text("UMG PAYTECH", 50, 55, { width: W, align: "center" });
-
-      doc
-        .fontSize(9)
-        .font("Helvetica")
-        .text("Plateforme de Paiement des Frais de Scolarité", 50, 78, { width: W, align: "center" });
-
-      doc
-        .fontSize(8)
-        .text("Université Marien Ngouabi · Brazzaville, République du Congo", 50, 93, {
-          width: W, align: "center",
-        });
-
-      // ── TITRE DOCUMENT ────────────────────────────────────────────────────
-      doc
-        .moveDown(0.5)
-        .rect(50, 120, W, 30).fill(AMBER);
-
-      doc
-        .fillColor("white")
-        .fontSize(13)
-        .font("Helvetica-Bold")
-        .text("DÉCLARATION DE RECETTE", 50, 128, { width: W, align: "center" });
-
-      // ── NUMÉRO DE REÇU ────────────────────────────────────────────────────
-      doc
-        .fillColor(BLACK)
-        .fontSize(9)
-        .font("Helvetica")
-        .text(`N° : ${receiptNumber}`, 50, 162, { width: W / 2 })
-        .text(
-          `Matricule : ${student.matricule || "—"}`,
-          50 + W / 2, 162,
-          { width: W / 2, align: "right" }
-        );
-
-      // ligne séparatrice
-      doc.moveTo(50, 180).lineTo(50 + W, 180).strokeColor("#CCCCCC").lineWidth(0.5).stroke();
-
-      // ── BLOC INTRO ────────────────────────────────────────────────────────
-      doc
-        .fillColor(BLACK)
-        .fontSize(10)
-        .font("Helvetica")
-        .text(
-          "Le Gestionnaire de la Direction de la Scolarité et des Examens, soussigné, déclare avoir reçu de :",
-          50, 192, { width: W }
-        );
-
-      // ── INFOS ÉTUDIANT ────────────────────────────────────────────────────
-      doc.rect(50, 215, W, 90).fill(GREY).stroke("#E0E0E0");
-
-      const infoY  = 225;
-      const col1   = 60;
-      const col2   = 230;
-      const lineH  = 18;
-
-      const civilite = student.gender === "F" ? "Mme" : "M.";
-      const fields = [
-        ["Nom et Prénom(s)", `${civilite} ${student.lastName} ${student.firstName}`],
-        ["Établissement",    establishment.name],
-        ["Parcours Type",    program.name],
-        ["Niveau",          program.level],
-        ["Année Académique", academicYear],
-      ];
-
-      fields.forEach(([label, value], i) => {
-        doc
-          .fillColor("#666666").fontSize(8).font("Helvetica")
-          .text(label, col1, infoY + i * lineH);
-        doc
-          .fillColor(BLACK).fontSize(9).font("Helvetica-Bold")
-          .text(value, col2, infoY + i * lineH);
-      });
-
-      // ── MONTANT ───────────────────────────────────────────────────────────
-      const amountY = 320;
-      doc.rect(50, amountY, W, 55).fill(NAVY);
-
+      const civilite  = student.gender === "F" ? "Mme" : "M.";
       const amountNum = parseFloat(amount);
       const amountStr = new Intl.NumberFormat("fr-FR").format(amountNum);
       const inWords   = numberToWords(amountNum);
 
-      doc
-        .fillColor("white")
-        .fontSize(9).font("Helvetica")
-        .text("LA SOMME DE :", 60, amountY + 10);
+      // ── EN-TÊTE OFFICIEL ───────────────────────────────────────────────────
+      doc.fillColor(BLACK).font("Times-Bold").fontSize(16)
+         .text("REPUBLIQUE DU CONGO", LEFT, 48, { width: W, align: "center" });
+      doc.font("Times-Italic").fontSize(10)
+         .text("Unité - Travail - Progrès", LEFT, 70, { width: W, align: "center" });
 
-      doc
-        .fontSize(20).font("Helvetica-Bold")
-        .text(`${amountStr} F CFA`, 60, amountY + 25, { width: W - 20, align: "center" });
+      // Armoiries (optionnel : déposer le fichier pour qu'elles apparaissent)
+      const emblemPath = process.env.RECEIPT_EMBLEM_PATH
+        || path.join(__dirname, "../../storage/assets/armoiries.png");
+      if (fs.existsSync(emblemPath)) {
+        try { doc.image(emblemPath, CX - 24, 86, { width: 48, height: 48 }); } catch (_) { /* ignore */ }
+      }
 
-      doc
-        .fillColor(AMBER)
-        .fontSize(8).font("Helvetica-Oblique")
-        .text(`(En lettres : ${inWords})`, 60, amountY + 47, { width: W - 20, align: "center" });
+      // ── Cadre "Semestre" (haut droite) — selon le niveau ───────────────────
+      const [sem1, sem2] = semestersForLevel(program.level);
+      const semX = RIGHT - 72, semY = 46, semW = 72, rowH = 15;
+      doc.lineWidth(0.7).strokeColor(BLACK);
+      doc.rect(semX, semY, semW, rowH).stroke();
+      doc.rect(semX, semY + rowH, semW / 2, rowH).stroke();
+      doc.rect(semX + semW / 2, semY + rowH, semW / 2, rowH).stroke();
+      doc.font("Times-Roman").fontSize(8).fillColor(BLACK)
+         .text("Semestre", semX, semY + 4, { width: semW, align: "center" })
+         .text(sem1, semX, semY + rowH + 4, { width: semW / 2, align: "center" })
+         .text(sem2, semX + semW / 2, semY + rowH + 4, { width: semW / 2, align: "center" });
 
-      // ── MODE DE PAIEMENT ──────────────────────────────────────────────────
-      const methodY = 390;
-      doc
-        .fillColor(BLACK)
-        .fontSize(9).font("Helvetica")
-        .text("En règlement de l'opération sus-mentionnée, via :", 50, methodY);
+      // ── TITRE ──────────────────────────────────────────────────────────────
+      const titleY = 150;
+      doc.font("Times-Bold").fontSize(18)
+         .text("DECLARATION DE RECETTE", LEFT, titleY, { width: W, align: "center" });
+      const tW = doc.widthOfString("DECLARATION DE RECETTE");
+      doc.moveTo(CX - tW / 2, titleY + 25).lineTo(CX + tW / 2, titleY + 25).lineWidth(1).stroke();
 
-      doc
-        .fontSize(10).font("Helvetica-Bold")
-        .fillColor(NAVY)
-        .text(`${paymentMethod} Mobile Money · ${phoneNumber}`, 50, methodY + 15);
+      // ── N° INSCRIPTION + MATRICULE ─────────────────────────────────────────
+      doc.font("Times-Roman").fontSize(11)
+         .text(`( Inscription        N° : ${receiptNumber} )`, LEFT, titleY + 40, { width: W, align: "center" });
+      doc.font("Times-Bold").fontSize(11)
+         .text(`Matricule : ${student.matricule}`, LEFT, titleY + 58, { width: W, align: "center" });
 
-      // ── PIED DE PAGE DOCUMENT ─────────────────────────────────────────────
-      const footerY = 430;
-      doc.moveTo(50, footerY).lineTo(50 + W, footerY).strokeColor("#CCCCCC").lineWidth(0.5).stroke();
+      // ── CORPS ──────────────────────────────────────────────────────────────
+      let y = titleY + 98;
+      const lh = 22;
 
-      const paidDate = paidAt
-        ? new Date(paidAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })
-        : "—";
+      // Rend une ligne "label : valeur" (label normal, valeur en gras, même ligne)
+      const line = (label, value) => {
+        doc.font("Times-Roman").fontSize(11).fillColor(BLACK).text(label, LEFT, y, { continued: true });
+        doc.font("Times-Bold").text(value);
+        y += lh;
+      };
 
-      doc
-        .fillColor(BLACK)
-        .fontSize(9).font("Helvetica")
-        .text(`Fait à Brazzaville, le ${paidDate}`, 50, footerY + 12)
-        .text("Pour le Directeur de la Scolarité et des Examens", 50 + W - 250, footerY + 12, {
-          width: 250, align: "right",
-        });
+      line("ANNEE ACADEMIQUE : ", academicYear);
+      line("ETABLISSEMENT : ", establishment.name);
 
-      doc
-        .fontSize(8).font("Helvetica-Bold")
-        .text("Le Chef de Service", 50 + W - 250, footerY + 28, { width: 250, align: "right" });
+      // Paragraphe de déclaration (pleine largeur, peut tenir sur 2 lignes)
+      const para = "LE GESTIONNAIRE DE LA DIRECTION DE LA SCOLARITÉ ET DES EXAMENS, SOUSSIGNÉ DÉCLARE AVOIR REÇU";
+      doc.font("Times-Roman").fontSize(11).fillColor(BLACK);
+      const paraH = doc.heightOfString(para, { width: W });
+      doc.text(para, LEFT, y, { width: W });
+      y += paraH + 8;
 
-      // Zone signature
-      doc.rect(50 + W - 200, footerY + 40, 195, 50).stroke("#CCCCCC");
-      doc
-        .fontSize(7).font("Helvetica").fillColor("#999999")
-        .text("Signature + Cachet", 50 + W - 200, footerY + 58, { width: 195, align: "center" });
+      line(`de ${civilite} `, `${student.lastName} ${student.firstName}`);
 
-      // ── QR CODE placeholder ───────────────────────────────────────────────
-      doc.rect(50, footerY + 40, 80, 50).fill(GREY).stroke("#CCCCCC");
-      doc
-        .fontSize(6).fillColor("#999999")
-        .text("QR Vérification", 50, footerY + 62, { width: 80, align: "center" });
+      // Niveau + Parcours sur la même ligne
+      doc.font("Times-Roman").fontSize(11).fillColor(BLACK)
+         .text("NIVEAU : ", LEFT, y, { continued: true })
+         .font("Times-Bold").text(program.level, { continued: true })
+         .font("Times-Roman").text("          PARCOURS TYPE : ", { continued: true })
+         .font("Times-Bold").text(program.name);
+      y += lh;
 
-      // ── BAS DE PAGE ───────────────────────────────────────────────────────
-      const bottomY = doc.page.height - 60;
-      doc.rect(50, bottomY, W, 25).fill(NAVY);
-      doc
-        .fillColor("white").fontSize(7).font("Helvetica")
-        .text(
-          `Document généré automatiquement par UMG PayTech · ${receiptNumber} · Ce document tient lieu de reçu officiel`,
-          50, bottomY + 8, { width: W, align: "center" }
-        );
+      line("LA SOMME DE (EN CHIFFRES) : ", `${amountStr} F CFA`);
+      line("(EN LETTRES) : ", `${inWords} F CFA`);
 
-      // ── NOTE SEMESTRES ─────────────────────────────────────────────────────
-      doc
-        .fillColor("#666666").fontSize(8).font("Helvetica")
-        .text("Semestres couverts :", 50, bottomY - 30)
-        .rect(170, bottomY - 33, 60, 16).stroke("#CCCCCC")
-        .text("S1  ☐   S2  ☐", 175, bottomY - 28);
+      doc.font("Times-Roman").fontSize(11).fillColor(BLACK)
+         .text("EN RÈGLEMENT DE L'OPÉRATION SUS-MENTIONNÉE.", LEFT, y, { width: W });
+      y += lh;
+
+      // Méthode de paiement (info complémentaire, discrète)
+      doc.font("Times-Italic").fontSize(9).fillColor(GREY)
+         .text(`Réglé par ${paymentMethod} Mobile Money (${phoneNumber}).`, LEFT, y, { width: W });
+
+      // ── DATE + SIGNATURE (bloc à droite) ───────────────────────────────────
+      const paidDate = (paidAt ? new Date(paidAt) : new Date())
+        .toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+      const sigY = Math.max(y + 34, 500);
+      doc.font("Times-Roman").fontSize(11).fillColor(BLACK)
+         .text(`Fait à Brazzaville, le ${paidDate}`, CX, sigY, { width: W / 2, align: "center" });
+      doc.font("Times-Bold").fontSize(11)
+         .text("Le Gestionnaire", CX, sigY + 24, { width: W / 2, align: "center" });
+
+      // ── QR de vérification (bas gauche, face à la signature) ───────────────
+      if (qrBuffer) {
+        const qrSize = 84;
+        doc.image(qrBuffer, LEFT, sigY - 6, { width: qrSize, height: qrSize });
+        doc.font("Times-Roman").fontSize(7).fillColor(GREY)
+           .text("Scannez pour vérifier", LEFT, sigY + qrSize - 4, { width: qrSize, align: "center" });
+      }
+
+      // ── PIED DE PAGE ───────────────────────────────────────────────────────
+      const now = new Date();
+      const genStamp = `${now.toLocaleDateString("fr-FR")} à ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+      doc.font("Times-Italic").fontSize(8).fillColor(GREY)
+         .text(`Établi par : FloPay le ${genStamp}`, LEFT, doc.page.height - 72, { width: W });
+      doc.font("Times-Roman").fontSize(7).fillColor(GREY)
+         .text(
+           `Reçu généré électroniquement via FloPay — vérifiable auprès de la scolarité · Réf. ${receiptNumber}`,
+           LEFT, doc.page.height - 58, { width: W, align: "center" }
+         );
 
       doc.end();
 
@@ -214,6 +175,16 @@ class PdfService {
       stream.on("error", reject);
     });
   }
+}
+
+// ── Semestres couverts selon le niveau ────────────────────────────────────────
+// Licence 1 → S1/S2, Licence 2 → S3/S4, Licence 3 → S5/S6
+// Le cycle Master repart à zéro : Master 1 → S1/S2, Master 2 → S3/S4
+function semestersForLevel(level) {
+  const match = String(level || "").match(/(\d+)/);
+  const year  = match ? parseInt(match[1], 10) : 1;
+  const first = (year - 1) * 2 + 1;
+  return [`S${first}`, `S${first + 1}`];
 }
 
 // ── Convertit un nombre en lettres (XAF, simplifié) ───────────────────────────

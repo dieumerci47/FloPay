@@ -260,6 +260,53 @@ const downloadReceipt = async (req, res) => {
   }
 };
 
+// ── Vérification publique d'un reçu (scan du QR code) ─────────────────────────
+// Public : n'expose QUE les infos nécessaires à l'authentification du reçu
+// (pas de téléphone, ni date/lieu de naissance).
+const verifyReceipt = async (req, res) => {
+  try {
+    const { receiptNumber } = req.params;
+
+    const payment = await prisma.payment.findUnique({
+      where:   { receiptNumber },
+      include: {
+        student: { include: { establishment: true } },
+        program: true,
+      },
+    });
+
+    if (!payment) {
+      return error(res, "Aucun reçu ne correspond à cette référence", 404);
+    }
+
+    const civilite = payment.student.gender === "F" ? "Mme" : "M.";
+
+    return success(res, {
+      receiptNumber: payment.receiptNumber,
+      status:        payment.status,
+      verified:      payment.status === "SUCCESS",
+      owner: {
+        fullName:      `${civilite} ${payment.student.lastName} ${payment.student.firstName}`,
+        matricule:     payment.student.matricule,
+        establishment: payment.student.establishment.name,
+        program:       payment.program.name,
+        level:         payment.program.level,
+      },
+      payment: {
+        amount:       Number(payment.amount),
+        currency:     payment.currency,
+        academicYear: payment.academicYear,
+        method:       payment.paymentMethod,
+        paidAt:       payment.paidAt,
+      },
+    });
+
+  } catch (err) {
+    logger.error("Erreur verifyReceipt:", err);
+    return error(res, "Erreur lors de la vérification", 500);
+  }
+};
+
 // helper local pour éviter d'exposer la classe
 function PawapayService_formatPhone(phone) {
   const cleaned = phone.replace(/\D/g, "");
@@ -268,4 +315,4 @@ function PawapayService_formatPhone(phone) {
   return `242${cleaned}`;
 }
 
-module.exports = { initiatePayment, pawapayWebhook, getPaymentStatus, downloadReceipt };
+module.exports = { initiatePayment, pawapayWebhook, getPaymentStatus, downloadReceipt, verifyReceipt };

@@ -7,6 +7,7 @@ import {
   getPaymentStatus,
   getReceiptUrl,
 } from "../services/api";
+// console.log(process.env.REACT_APP_API_URL);
 
 // ── Icônes inline ──────────────────────────────────────────────────────────────
 const Icon = {

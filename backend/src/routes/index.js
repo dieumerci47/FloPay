@@ -2,7 +2,7 @@
 const express = require("express");
 const router  = express.Router();
 
-const { initiatePayment, pawapayWebhook, getPaymentStatus, downloadReceipt }
+const { initiatePayment, pawapayWebhook, getPaymentStatus, downloadReceipt, verifyReceipt }
   = require("../controllers/payment.controller");
 
 const { login, searchByMatricule, searchByReceipt, listPayments, getDashboardStats }
@@ -28,6 +28,7 @@ router.get("/establishments/:establishmentId/programs", getProgramsByEstablishme
 
 // Paiement étudiant
 router.post("/payments",                paymentRules, validate, initiatePayment);
+router.get("/payments/verify/:receiptNumber",         verifyReceipt);   // vérification publique (QR)
 router.get("/payments/:paymentId/status",            getPaymentStatus);
 router.get("/payments/:receiptNumber/receipt",        downloadReceipt);
 
