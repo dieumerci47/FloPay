@@ -41,7 +41,7 @@ const searchByMatricule = async (req, res) => {
       where: { matricule },
       include: {
         establishment: true,
-        program:       true,
+        program:       { include: { level: true } },
         payments: {
           orderBy: { createdAt: "desc" },
           include: { receipt: true },
@@ -67,7 +67,7 @@ const searchByMatricule = async (req, res) => {
         phone:         student.phone,
         establishment: student.establishment.name,
         program:       student.program.name,
-        level:         student.program.level,
+        level:         student.program.level.name,
       },
       paymentStatus:  latestSuccess ? "PAYÉ" : "NON PAYÉ",
       latestPayment:  latestSuccess
@@ -75,6 +75,7 @@ const searchByMatricule = async (req, res) => {
             receiptNumber: latestSuccess.receiptNumber,
             amount:        Number(latestSuccess.amount),
             academicYear:  latestSuccess.academicYear,
+            niveau:        `${student.program.level.name} ${latestSuccess.studyYear}`,
             paidAt:        latestSuccess.paidAt,
             paymentMethod: latestSuccess.paymentMethod,
             hasReceipt:    !!latestSuccess.receipt,
@@ -84,6 +85,7 @@ const searchByMatricule = async (req, res) => {
         receiptNumber: p.receiptNumber,
         amount:        Number(p.amount),
         academicYear:  p.academicYear,
+        niveau:        `${student.program.level.name} ${p.studyYear}`,
         status:        p.status,
         method:        p.paymentMethod,
         createdAt:     p.createdAt,
@@ -107,7 +109,7 @@ const searchByReceipt = async (req, res) => {
       where:   { receiptNumber },
       include: {
         student: { include: { establishment: true } },
-        program: true,
+        program: { include: { level: true } },
         receipt: true,
       },
     });
@@ -135,7 +137,7 @@ const searchByReceipt = async (req, res) => {
         phone:         payment.student.phone,
         establishment: payment.student.establishment.name,
         program:       payment.program.name,
-        level:         payment.program.level,
+        level:         `${payment.program.level.name} ${payment.studyYear}`,
       },
     });
 
@@ -167,7 +169,7 @@ const listPayments = async (req, res) => {
         orderBy: { createdAt: "desc" },
         include: {
           student: { include: { establishment: true } },
-          program: true,
+          program: { include: { level: true } },
         },
       }),
       prisma.payment.count({ where }),
@@ -180,7 +182,7 @@ const listPayments = async (req, res) => {
       matricule:     p.student.matricule,
       establishment: p.student.establishment.name,
       program:       p.program.name,
-      level:         p.program.level,
+      level:         `${p.program.level.name} ${p.studyYear}`,
       amount:        Number(p.amount),
       method:        p.paymentMethod,
       phone:         p.phoneNumber,

@@ -25,15 +25,42 @@ const getProgramsByEstablishment = async (req, res) => {
   try {
     const programs = await prisma.program.findMany({
       where: { establishmentId, isActive: true },
-      orderBy: [{ level: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, level: true, amount: true },
+      orderBy: { name: "asc" },
+      select: {
+        id:    true,
+        name:  true,
+        level: { select: { id: true, name: true, amount: true, years: true } },
+      },
     });
 
-    const data = programs.map((p) => ({ ...p, amount: Number(p.amount) }));
+    // Aplati : le frontend utilise p.level (cycle), p.amount, p.levelYears
+    const data = programs.map((p) => ({
+      id:         p.id,
+      name:       p.name,
+      levelId:    p.level.id,
+      level:      p.level.name,
+      levelYears: p.level.years,
+      amount:     Number(p.level.amount),
+    }));
     return success(res, data);
 
   } catch (err) {
     logger.error("Erreur getProgramsByEstablishment:", err);
+    return error(res, "Erreur serveur", 500);
+  }
+};
+
+// ── Liste des niveaux/cycles (public) ─────────────────────────────────────────
+const getLevels = async (req, res) => {
+  try {
+    const levels = await prisma.level.findMany({
+      where:   { isActive: true },
+      orderBy: { amount: "asc" },
+      select:  { id: true, name: true, amount: true, years: true },
+    });
+    return success(res, levels.map((l) => ({ ...l, amount: Number(l.amount) })));
+  } catch (err) {
+    logger.error("Erreur getLevels:", err);
     return error(res, "Erreur serveur", 500);
   }
 };
@@ -53,17 +80,41 @@ const createEstablishment = async (req, res) => {
   }
 };
 
+// ── Créer un niveau/cycle (admin) ─────────────────────────────────────────────
+const createLevel = async (req, res) => {
+  const { name, amount, years } = req.body;
+  try {
+    const existing = await prisma.level.findUnique({ where: { name } });
+    if (existing) return error(res, "Ce niveau existe déjà", 409);
+
+    const level = await prisma.level.create({ data: { name, amount, ...(years ? { years } : {}) } });
+    return success(res, { ...level, amount: Number(level.amount) }, "Niveau créé", 201);
+  } catch (err) {
+    logger.error("Erreur createLevel:", err);
+    return error(res, "Erreur serveur", 500);
+  }
+};
+
 // ── Créer un programme (admin) ────────────────────────────────────────────────
 const createProgram = async (req, res) => {
-  const { name, level, amount, establishmentId } = req.body;
+  const { name, levelId, establishmentId } = req.body;
   try {
     const establishment = await prisma.establishment.findUnique({ where: { id: establishmentId } });
     if (!establishment) return error(res, "Établissement non trouvé", 404);
 
+    const level = await prisma.level.findUnique({ where: { id: levelId } });
+    if (!level) return error(res, "Niveau non trouvé", 404);
+
     const program = await prisma.program.create({
-      data: { name, level, amount, establishmentId },
+      data:    { name, levelId, establishmentId },
+      include: { level: true },
     });
-    return success(res, { ...program, amount: Number(program.amount) }, "Programme créé", 201);
+    return success(res, {
+      id:     program.id,
+      name:   program.name,
+      level:  program.level.name,
+      amount: Number(program.level.amount),
+    }, "Programme créé", 201);
 
   } catch (err) {
     logger.error("Erreur createProgram:", err);
@@ -71,4 +122,7 @@ const createProgram = async (req, res) => {
   }
 };
 
-module.exports = { getEstablishments, getProgramsByEstablishment, createEstablishment, createProgram };
+module.exports = {
+  getEstablishments, getProgramsByEstablishment, getLevels,
+  createEstablishment, createLevel, createProgram,
+};

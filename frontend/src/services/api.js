@@ -31,6 +31,10 @@ export const getPaymentStatus = (paymentId) =>
 export const getReceiptUrl = (receiptNumber) =>
   `${process.env.REACT_APP_API_URL || "http://192.168.100.254:3000/api"}/payments/${receiptNumber}/receipt`;
 
+// Télécharge le reçu en blob (passe par le proxy → vrai PDF, pas l'index.html)
+export const downloadReceiptBlob = (receiptNumber) =>
+  api.get(`/payments/${receiptNumber}/receipt`, { responseType: "blob" }).then((r) => r.data);
+
 // Vérification publique d'un reçu (scan du QR code)
 export const verifyReceipt = (receiptNumber) =>
   api.get(`/payments/verify/${receiptNumber}`).then((r) => r.data.data);

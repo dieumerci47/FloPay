@@ -5,7 +5,7 @@ import {
   getPrograms,
   initiatePayment,
   getPaymentStatus,
-  getReceiptUrl,
+  downloadReceiptBlob,
 } from "../services/api";
 // console.log(process.env.REACT_APP_API_URL);
 
@@ -125,6 +125,7 @@ export default function PaymentForm() {
     establishmentId: "",
     academicYear: "",
     level: "",
+    studyYear: "",
     programId: "",
     paymentMethod: "",
     paymentPhone: "",
@@ -143,6 +144,7 @@ export default function PaymentForm() {
   const [loading, setLoading] = useState(false);
   const [loadingEstab, setLoadingEstab] = useState(true);
   const [loadingPrograms, setLoadingPrograms] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // ── Chargement établissements ──────────────────────────────────────────────
   useEffect(() => {
@@ -160,7 +162,7 @@ export default function PaymentForm() {
       return;
     }
     setLoadingPrograms(true);
-    setForm((f) => ({ ...f, level: "", programId: "" }));
+    setForm((f) => ({ ...f, level: "", studyYear: "", programId: "" }));
     setSelectedProgram(null);
     getPrograms(form.establishmentId)   // tous les programmes — filtrés côté client
       .then(setPrograms)
@@ -221,7 +223,7 @@ export default function PaymentForm() {
     if (s === 2) {
       if (!form.establishmentId) errs.establishmentId = "Choisissez un établissement";
       if (!form.academicYear) errs.academicYear = "Choisissez l'année académique";
-      if (!form.level) errs.level = "Choisissez votre niveau";
+      if (!form.level || !form.studyYear) errs.level = "Choisissez votre niveau";
       if (!form.programId) errs.programId = "Choisissez un parcours";
     }
     if (s === 3) {
@@ -263,19 +265,51 @@ export default function PaymentForm() {
     }
   };
 
+  // ── Téléchargement du reçu (via blob → vrai PDF, pas l'index.html du proxy) ──
+  const handleDownloadReceipt = async () => {
+    const ref = paymentData?.receiptNumber;
+    if (!ref || downloading) return;
+    setDownloading(true);
+    try {
+      const blob = await downloadReceiptBlob(ref);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `recu-${ref}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Téléchargement du reçu échoué:", err);
+      alert("Le téléchargement du reçu a échoué. Réessayez dans un instant.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const establishment = establishments.find((e) => e.id === form.establishmentId);
 
-  // ── Cascade niveau → parcours (l'année est indépendante du programme) ───────
-  const availableLevels = form.establishmentId
-    ? [...new Set(programs.map((p) => p.level))].sort()
-    : [];
+  // ── Cascade niveau (cycle + année) → parcours ──────────────────────────────
+  // Chaque cycle (Licence/Master…) est déplié en ses années (Licence 1, 2, 3…),
+  // mais le prix reste celui du cycle.
+  const cyclesMap = {};
+  programs.forEach((p) => { if (!(p.level in cyclesMap)) cyclesMap[p.level] = p.levelYears || 1; });
+  const niveauOptions = Object.entries(cyclesMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .flatMap(([cycle, years]) =>
+      Array.from({ length: years }, (_, i) => ({ value: `${cycle}::${i + 1}`, label: `${cycle} ${i + 1}` }))
+    );
+  const niveauValue = form.level && form.studyYear ? `${form.level}::${form.studyYear}` : "";
+
   const availableParcours = form.level
     ? programs.filter((p) => p.level === form.level)
     : [];
 
-  // Choisir un niveau réinitialise le parcours
-  const setLevel = (e) => {
-    setForm((f) => ({ ...f, level: e.target.value, programId: "" }));
+  // Choisir un niveau (cycle + année) réinitialise le parcours
+  const setNiveau = (e) => {
+    const [cycle, year] = e.target.value.split("::");
+    setForm((f) => ({ ...f, level: cycle || "", studyYear: year ? Number(year) : "", programId: "" }));
     setErrors((er) => ({ ...er, level: "" }));
   };
 
@@ -499,12 +533,12 @@ export default function PaymentForm() {
 
                 <Field label="Niveau" required error={errors.level}>
                   <SelectChevron>
-                    <select value={form.level} onChange={setLevel} disabled={!form.establishmentId || loadingPrograms} className={cx(inputBase, "pr-10 disabled:opacity-60", errors.level ? inputErr : inputOk)}>
+                    <select value={niveauValue} onChange={setNiveau} disabled={!form.establishmentId || loadingPrograms} className={cx(inputBase, "pr-10 disabled:opacity-60", errors.level ? inputErr : inputOk)}>
                       <option value="">
                         {!form.establishmentId ? "Choisissez d'abord un établissement" : loadingPrograms ? "Chargement..." : "Choisissez votre niveau"}
                       </option>
-                      {availableLevels.map((l) => (
-                        <option key={l} value={l}>{l}</option>
+                      {niveauOptions.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
                   </SelectChevron>
@@ -543,7 +577,7 @@ export default function PaymentForm() {
                     rows={[
                       ["Établissement", establishment?.code],
                       ["Parcours", selectedProgram.name],
-                      ["Niveau", selectedProgram.level],
+                      ["Niveau", `${form.level} ${form.studyYear}`],
                       ["Année académique", form.academicYear],
                     ]}
                   />
@@ -622,7 +656,7 @@ export default function PaymentForm() {
                     amount={selectedProgram.amount}
                     rows={[
                       ["Étudiant", `${form.lastName} ${form.firstName}`.trim() || "—"],
-                      ["Parcours", `${selectedProgram.name} — ${selectedProgram.level}`],
+                      ["Parcours", `${selectedProgram.name} — ${form.level} ${form.studyYear}`],
                     ]}
                   />
                 )}
@@ -719,7 +753,7 @@ export default function PaymentForm() {
                       {[
                         ["Étudiant", `${form.lastName} ${form.firstName}`.trim()],
                         ["Établissement", establishment?.name || "—"],
-                        ["Parcours", selectedProgram ? `${selectedProgram.name} — ${selectedProgram.level}` : "—"],
+                        ["Parcours", selectedProgram ? `${selectedProgram.name} — ${form.level} ${form.studyYear}` : "—"],
                         ["Montant réglé", selectedProgram ? formatAmount(selectedProgram.amount) : "—"],
                         ["Mode de paiement", form.paymentMethod + " Mobile Money"],
                         ["Année académique", form.academicYear || "—"],
@@ -732,15 +766,15 @@ export default function PaymentForm() {
                     </div>
                   </div>
 
-                  <a
-                    href={getReceiptUrl(paymentData?.receiptNumber)}
-                    download
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-mint px-6 py-3.5 text-[0.94rem] font-semibold text-white shadow-card transition hover:brightness-110 active:translate-y-px"
+                  <button
+                    type="button"
+                    onClick={handleDownloadReceipt}
+                    disabled={downloading}
+                    className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-mint px-6 py-3.5 text-[0.94rem] font-semibold text-white shadow-card transition hover:brightness-110 active:translate-y-px disabled:opacity-60"
                   >
-                    <Icon.Download className="h-4 w-4" /> Télécharger mon reçu PDF
-                  </a>
+                    <Icon.Download className="h-4 w-4" />
+                    {downloading ? "Téléchargement…" : "Télécharger mon reçu PDF"}
+                  </button>
                   <p className="mt-4 text-[0.82rem] text-ink-900/45">
                     Présentez ce document à votre établissement pour obtenir votre attestation d'inscription.
                   </p>

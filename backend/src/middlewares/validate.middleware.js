@@ -29,6 +29,8 @@ const paymentRules = [
     .isUUID().withMessage("ID programme invalide"),
   body("academicYear")
     .matches(/^\d{4}-\d{4}$/).withMessage("Année académique invalide (ex: 2025-2026)"),
+  body("studyYear")
+    .isInt({ min: 1 }).withMessage("Niveau (année d'étude) invalide").toInt(),
   body("paymentMethod")
     .isIn(["MTN", "AIRTEL"]).withMessage("Méthode de paiement invalide (MTN ou AIRTEL)"),
   body("paymentPhone")
@@ -46,11 +48,16 @@ const establishmentRules = [
   body("code").trim().notEmpty().toUpperCase().withMessage("Code requis"),
 ];
 
+const levelRules = [
+  body("name").trim().notEmpty().withMessage("Nom du niveau requis"),
+  body("amount").isFloat({ min: 1 }).withMessage("Montant invalide"),
+  body("years").optional().isInt({ min: 1, max: 10 }).withMessage("Nombre d'années invalide").toInt(),
+];
+
 const programRules = [
   body("name").trim().notEmpty().withMessage("Nom du parcours requis"),
-  body("level").trim().notEmpty().withMessage("Niveau requis"),
-  body("amount").isFloat({ min: 1 }).withMessage("Montant invalide"),
+  body("levelId").isUUID().withMessage("Niveau invalide"),
   body("establishmentId").isUUID().withMessage("ID établissement invalide"),
 ];
 
-module.exports = { validate, paymentRules, loginRules, establishmentRules, programRules };
+module.exports = { validate, paymentRules, loginRules, establishmentRules, levelRules, programRules };

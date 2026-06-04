@@ -4,21 +4,32 @@ const pawapayService          = require("../services/pawapay.service");
 const pdfService              = require("../services/pdf.service");
 const { generateReceiptNumber } = require("../utils/receiptNumber");
 const { generateMatricule }     = require("../utils/matricule");
+
+// Fenêtre pendant laquelle un paiement PENDING récent est réutilisé au lieu d'en
+// créer un nouveau (évite un 2ᵉ dépôt PawaPay → double débit sur re-soumission).
+const PENDING_REUSE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 const { success, error }      = require("../utils/response");
 const logger                  = require("../utils/logger");
 
 // ── Initier un paiement ───────────────────────────────────────────────────────
 const initiatePayment = async (req, res) => {
   const { lastName, firstName, gender, birthDate, birthPlace, phone,
-          establishmentId, programId, academicYear, paymentMethod, paymentPhone } = req.body;
+          establishmentId, programId, academicYear, studyYear, paymentMethod, paymentPhone } = req.body;
 
   try {
-    // 1. Récupérer le programme (contient le montant)
+    // 1. Récupérer le programme (le montant vient désormais du niveau)
     const program = await prisma.program.findFirst({
       where: { id: programId, isActive: true },
-      include: { establishment: true },
+      include: { establishment: true, level: true },
     });
     if (!program) return error(res, "Programme introuvable", 404);
+
+    const programAmount = program.level.amount;   // frais = montant du cycle (toutes années confondues)
+
+    // L'année d'étude choisie doit être valide pour le cycle (ex: Licence → 1..3)
+    if (!Number.isInteger(studyYear) || studyYear < 1 || studyYear > program.level.years) {
+      return error(res, `Niveau invalide pour le cycle ${program.level.name}`, 422);
+    }
 
     // 2. Vérifier que l'étudiant n'a pas déjà payé ce parcours pour l'année choisie.
     //    Identité = téléphone + nom + prénom. L'année est choisie par l'étudiant.
@@ -32,6 +43,33 @@ const initiatePayment = async (req, res) => {
     });
     if (alreadyPaid) {
       return error(res, "Ce numéro a déjà un paiement validé pour ce parcours cette année académique", 409);
+    }
+
+    // 2 bis. Réutiliser un paiement PENDING récent (anti double-dépôt sur re-soumission).
+    //        On renvoie l'existant → le frontend reprend son polling, pas de 2ᵉ prompt PIN.
+    const recentPending = await prisma.payment.findFirst({
+      where: {
+        student: { phone, lastName, firstName },
+        programId,
+        academicYear,
+        studyYear,
+        status: "PENDING",
+        pawapayDepositId: { not: null },   // un dépôt a bien été initié
+        createdAt: { gte: new Date(Date.now() - PENDING_REUSE_WINDOW_MS) },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (recentPending) {
+      logger.info(`♻️  Paiement PENDING réutilisé: ${recentPending.receiptNumber}`);
+      return success(res, {
+        paymentId:     recentPending.id,
+        receiptNumber: recentPending.receiptNumber,
+        depositId:     recentPending.pawapayDepositId,
+        amount:        Number(recentPending.amount),
+        currency:      recentPending.currency,
+        status:        "PENDING",
+        message:       "Un paiement est déjà en cours pour ce parcours. Confirmez-le sur votre téléphone.",
+      }, "Paiement déjà en cours", 200);
     }
 
     // 3. Créer ou retrouver l'étudiant (identité = téléphone + nom + prénom)
@@ -59,11 +97,12 @@ const initiatePayment = async (req, res) => {
     const payment = await prisma.payment.create({
       data: {
         receiptNumber,
-        amount:        program.amount,
+        amount:        programAmount,
         currency:      "XAF",
         paymentMethod,
         phoneNumber:   PawapayService_formatPhone(paymentPhone),
         academicYear,
+        studyYear,
         studentId:     student.id,
         programId:     program.id,
       },
@@ -74,7 +113,7 @@ const initiatePayment = async (req, res) => {
 
     const { depositId } = await pawapayService.initiateDeposit({
       phone:         formattedPhone,
-      amount:        Number(program.amount),
+      amount:        Number(programAmount),
       method:        paymentMethod,
       receiptNumber,
       description:   `Scolarite UMG ${academicYear} - ${student.lastName} ${student.firstName}`,
@@ -92,7 +131,7 @@ const initiatePayment = async (req, res) => {
       paymentId:     payment.id,
       receiptNumber,
       depositId,
-      amount:        Number(program.amount),
+      amount:        Number(programAmount),
       currency:      "XAF",
       status:        "PENDING",
       message:       "Confirmez le paiement sur votre téléphone mobile",
@@ -132,7 +171,7 @@ const pawapayWebhook = async (req, res) => {
       where:   { pawapayDepositId: depositId },
       include: {
         student: { include: { establishment: true } },
-        program: true,
+        program: { include: { level: true } },
       },
     });
 
@@ -271,7 +310,7 @@ const verifyReceipt = async (req, res) => {
       where:   { receiptNumber },
       include: {
         student: { include: { establishment: true } },
-        program: true,
+        program: { include: { level: true } },
       },
     });
 
@@ -290,7 +329,7 @@ const verifyReceipt = async (req, res) => {
         matricule:     payment.student.matricule,
         establishment: payment.student.establishment.name,
         program:       payment.program.name,
-        level:         payment.program.level,
+        level:         `${payment.program.level.name} ${payment.studyYear}`,
       },
       payment: {
         amount:       Number(payment.amount),

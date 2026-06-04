@@ -8,23 +8,25 @@ const { initiatePayment, pawapayWebhook, getPaymentStatus, downloadReceipt, veri
 const { login, searchByMatricule, searchByReceipt, listPayments, getDashboardStats }
   = require("../controllers/admin.controller");
 
-const { getEstablishments, getProgramsByEstablishment, createEstablishment, createProgram }
+const { getEstablishments, getProgramsByEstablishment, getLevels,
+        createEstablishment, createLevel, createProgram }
   = require("../controllers/establishment.controller");
 
 const { authenticate, requireSuperAdmin }
   = require("../middlewares/auth.middleware");
 
 const {
-  validate, paymentRules, loginRules, establishmentRules, programRules,
+  validate, paymentRules, loginRules, establishmentRules, levelRules, programRules,
 } = require("../middlewares/validate.middleware");
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PUBLIC — Routes accessibles sans authentification
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Établissements & programmes (pour le formulaire étudiant)
+// Établissements, niveaux & programmes (pour le formulaire étudiant)
 router.get("/establishments",                        getEstablishments);
 router.get("/establishments/:establishmentId/programs", getProgramsByEstablishment);
+router.get("/levels",                                getLevels);
 
 // Paiement étudiant
 router.post("/payments",                paymentRules, validate, initiatePayment);
@@ -51,6 +53,9 @@ router.get("/admin/payments",                    authenticate, listPayments);
 // Gestion établissements & programmes (Super Admin seulement)
 router.post("/admin/establishments",
   authenticate, requireSuperAdmin, establishmentRules, validate, createEstablishment
+);
+router.post("/admin/levels",
+  authenticate, requireSuperAdmin, levelRules, validate, createLevel
 );
 router.post("/admin/programs",
   authenticate, requireSuperAdmin, programRules, validate, createProgram

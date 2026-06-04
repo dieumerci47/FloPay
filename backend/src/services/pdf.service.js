@@ -21,8 +21,9 @@ class PdfService {
    * @returns {string}         - Chemin absolu du fichier PDF généré
    */
   async generateReceipt(payment) {
-    const { student, program, receiptNumber, amount, academicYear, paidAt, paymentMethod, phoneNumber } = payment;
+    const { student, program, receiptNumber, amount, academicYear, studyYear, paidAt, paymentMethod, phoneNumber } = payment;
     const establishment = student.establishment;
+    const niveauLabel = `${program.level.name} ${studyYear}`;   // ex: "Licence 2"
 
     const filename = `receipt_${receiptNumber.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
     const filepath = path.join(OUTPUT_DIR, filename);
@@ -71,7 +72,7 @@ class PdfService {
       }
 
       // ── Cadre "Semestre" (haut droite) — selon le niveau ───────────────────
-      const [sem1, sem2] = semestersForLevel(program.level);
+      const [sem1, sem2] = semestersForLevel(niveauLabel);
       const semX = RIGHT - 72, semY = 46, semW = 72, rowH = 15;
       doc.lineWidth(0.7).strokeColor(BLACK);
       doc.rect(semX, semY, semW, rowH).stroke();
@@ -121,7 +122,7 @@ class PdfService {
       // Niveau + Parcours sur la même ligne
       doc.font("Times-Roman").fontSize(11).fillColor(BLACK)
          .text("NIVEAU : ", LEFT, y, { continued: true })
-         .font("Times-Bold").text(program.level, { continued: true })
+         .font("Times-Bold").text(niveauLabel, { continued: true })
          .font("Times-Roman").text("          PARCOURS TYPE : ", { continued: true })
          .font("Times-Bold").text(program.name);
       y += lh;

@@ -24,18 +24,33 @@ model Establishment {
   @@map("establishments")
 }
 
+// ─── Niveaux (cycles) avec leur montant ───────────────────────────────────────
+model Level {
+  id        String    @id @default(uuid())
+  name      String    @unique               // "Licence", "Master", "Doctorat"
+  amount    Decimal   @db.Decimal(10, 2)     // frais de scolarité du cycle
+  years     Int       @default(3)            // nb d'années du cycle (Licence=3, Master=2)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  programs  Program[]
+
+  @@map("levels")
+}
+
 // ─── Parcours par établissement ───────────────────────────────────────────────
 model Program {
   id              String   @id @default(uuid())
   name            String                          // ex: "Physique", "Informatique"
-  level           String                          // ex: "Licence 1", "Master 2"
-  amount          Decimal  @db.Decimal(10, 2)     // frais de scolarité
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   establishmentId String
   establishment   Establishment @relation(fields: [establishmentId], references: [id])
+  levelId         String
+  level           Level    @relation(fields: [levelId], references: [id])
   students        Student[]
   payments        Payment[]
 
@@ -74,6 +89,7 @@ model Payment {
   phoneNumber          String        // numéro mobile money
   status               PaymentStatus @default(PENDING)
   academicYear         String
+  studyYear            Int           @default(1)  // année dans le cycle (1=L1/M1, 2=L2/M2…)
 
   // PawaPay
   pawapayDepositId     String?       @unique
