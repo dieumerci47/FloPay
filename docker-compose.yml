@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: flopay_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: flopay
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: flopay_backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/flopay?schema=public
+      - PORT=3000
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+      # Empêche d'écraser les modules installés dans le container avec le dossier local vide
+      - /app/node_modules
+
+volumes:
+  pgdata:

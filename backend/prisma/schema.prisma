@@ -1,0 +1,138 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Etablissements ───────────────────────────────────────────────────────────
+model Establishment {
+  id        String    @id @default(uuid())
+  name      String
+  code      String    @unique  // ex: "FST", "FLLASH", "FDSE"
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  programs  Program[]
+  students  Student[]
+
+  @@map("establishments")
+}
+
+// ─── Parcours par établissement ───────────────────────────────────────────────
+model Program {
+  id              String   @id @default(uuid())
+  name            String                          // ex: "Physique", "Informatique"
+  level           String                          // ex: "Licence 1", "Master 2"
+  amount          Decimal  @db.Decimal(10, 2)     // frais de scolarité
+  academicYear    String                          // ex: "2024-2025"
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishmentId String
+  establishment   Establishment @relation(fields: [establishmentId], references: [id])
+  students        Student[]
+  payments        Payment[]
+
+  @@map("programs")
+}
+
+// ─── Etudiants ────────────────────────────────────────────────────────────────
+model Student {
+  id              String   @id @default(uuid())
+  matricule       String   @unique
+  fullName        String
+  birthDate       DateTime?
+  birthPlace      String?
+  phone           String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishmentId String
+  establishment   Establishment @relation(fields: [establishmentId], references: [id])
+  programId       String
+  program         Program @relation(fields: [programId], references: [id])
+  payments        Payment[]
+
+  @@map("students")
+}
+
+// ─── Paiements ────────────────────────────────────────────────────────────────
+model Payment {
+  id                   String        @id @default(uuid())
+  receiptNumber        String        @unique  // N° déclaration de recette
+  amount               Decimal       @db.Decimal(10, 2)
+  currency             String        @default("XAF")
+  paymentMethod        PaymentMethod
+  phoneNumber          String        // numéro mobile money
+  status               PaymentStatus @default(PENDING)
+  academicYear         String
+
+  // PawaPay
+  pawapayDepositId     String?       @unique
+  pawapayStatus        String?
+  pawapayFailureReason String?
+
+  // Timestamps
+  paidAt               DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  studentId            String
+  student              Student  @relation(fields: [studentId], references: [id])
+  programId            String
+  program              Program  @relation(fields: [programId], references: [id])
+  receipt              Receipt?
+
+  @@map("payments")
+}
+
+// ─── Reçus générés ────────────────────────────────────────────────────────────
+model Receipt {
+  id          String   @id @default(uuid())
+  pdfPath     String                       // chemin vers le fichier PDF
+  generatedAt DateTime @default(now())
+
+  paymentId   String   @unique
+  payment     Payment  @relation(fields: [paymentId], references: [id])
+
+  @@map("receipts")
+}
+
+// ─── Admins (scolarité) ───────────────────────────────────────────────────────
+model Admin {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  fullName     String
+  role         AdminRole @default(AGENT)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("admins")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+enum PaymentMethod {
+  MTN
+  AIRTEL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  AGENT
+}

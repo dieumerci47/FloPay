@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Institution {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  students  Student[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id            String      @id @default(uuid())
+  matricule     String      @unique
+  firstName     String
+  lastName      String
+  phone         String?
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  level         String      // ex: L1, L2, M1
+  field         String      // ex: Droit, Informatique
+  transactions  Transaction[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Transaction {
+  id            String   @id @default(uuid())
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id])
+  amount        Float
+  currency      String   @default("XAF")
+  status        String   @default("PENDING") // PENDING, SUCCESS, FAILED
+  paymentMethod String   // MTN, AIRTEL
+  pawapayId     String?  @unique // ID fourni par PawaPay
+  pdfReceiptUrl String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
