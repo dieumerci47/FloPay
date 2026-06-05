@@ -20,6 +20,7 @@ model Establishment {
 
   programs  Program[]
   students  Student[]
+  admins    Admin[]
 
   @@map("establishments")
 }
@@ -128,12 +129,62 @@ model Admin {
   email        String    @unique
   passwordHash String
   fullName     String
-  role         AdminRole @default(AGENT)
+  role         AdminRole @default(ESTABLISHMENT_ADMIN)
   isActive     Boolean   @default(true)
+
+  // Cloisonnement multi-tenant :
+  //   null  → SUPER_ADMIN (supervision globale, tous les établissements)
+  //   défini → admin rattaché à UN établissement (ne voit que le sien)
+  establishmentId String?
+  establishment   Establishment? @relation(fields: [establishmentId], references: [id])
+
+  // Sécurité — protection anti brute-force
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
   @@map("admins")
+}
+
+// ─── Refresh tokens (rotation, stockés hashés) ────────────────────────────────
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique   // SHA-256 du token — jamais stocké en clair
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ip        String?
+  createdAt DateTime  @default(now())
+
+  adminId   String
+  admin     Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@map("refresh_tokens")
+}
+
+// ─── Journal d'audit (traçabilité des actions admin) ──────────────────────────
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String                 // LOGIN, LOGOUT, VERIFY_RECEIPT, CREATE_ADMIN…
+  targetType String?                // Payment, Student, Admin…
+  targetId   String?
+  detail     String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  adminId    String?
+  admin      Admin?   @relation(fields: [adminId], references: [id])
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -156,5 +207,5 @@ enum PaymentStatus {
 
 enum AdminRole {
   SUPER_ADMIN
-  AGENT
+  ESTABLISHMENT_ADMIN
 }

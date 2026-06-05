@@ -1,31 +1,98 @@
 // src/controllers/admin.controller.js
 const { prisma }          = require("../config/database");
 const bcrypt              = require("bcryptjs");
-const jwt                 = require("jsonwebtoken");
 const { success, error, paginated } = require("../utils/response");
 const logger              = require("../utils/logger");
+const { audit }           = require("../utils/audit");
+const {
+  signAccessToken, generateRefreshToken, hashToken,
+  refreshExpiry, refreshCookieOptions, REFRESH_COOKIE,
+} = require("../utils/tokens");
 
-// ── Login admin ───────────────────────────────────────────────────────────────
+// ── Politique anti brute-force ────────────────────────────────────────────────
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCK_DURATION_MIN   = 15;
+
+// Profil public d'un admin (jamais le hash de mot de passe)
+const publicAdmin = (a) => ({
+  id:            a.id,
+  email:         a.email,
+  fullName:      a.fullName,
+  role:          a.role,
+  establishmentId: a.establishmentId,
+  establishment: a.establishment
+    ? { id: a.establishment.id, name: a.establishment.name, code: a.establishment.code }
+    : null,
+});
+
+// Émet un refresh token : le stocke hashé en base et le pose en cookie httpOnly.
+async function issueRefreshToken(res, req, adminId) {
+  const raw = generateRefreshToken();
+  await prisma.refreshToken.create({
+    data: {
+      tokenHash: hashToken(raw),
+      adminId,
+      expiresAt: refreshExpiry(),
+      userAgent: (req.headers["user-agent"] || "").slice(0, 250),
+      ip:        (req.ip || "").toString(),
+    },
+  });
+  res.cookie(REFRESH_COOKIE, raw, refreshCookieOptions());
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────────
 const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const admin = await prisma.admin.findUnique({ where: { email } });
+    const admin = await prisma.admin.findUnique({
+      where: { email },
+      include: { establishment: true },
+    });
 
+    // Réponse volontairement générique pour ne pas révéler l'existence du compte
     if (!admin || !admin.isActive) {
       return error(res, "Identifiants incorrects", 401);
     }
 
-    const isMatch = await bcrypt.compare(password, admin.passwordHash);
-    if (!isMatch) return error(res, "Identifiants incorrects", 401);
+    // Compte verrouillé ?
+    if (admin.lockedUntil && admin.lockedUntil > new Date()) {
+      const mins = Math.ceil((admin.lockedUntil - new Date()) / 60000);
+      return error(res, `Compte temporairement verrouillé. Réessayez dans ${mins} min.`, 423);
+    }
 
-    const token = jwt.sign(
-      { id: admin.id, email: admin.email, role: admin.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-    );
+    const isMatch = await bcrypt.compare(password, admin.passwordHash);
+    if (!isMatch) {
+      const attempts = admin.failedLoginAttempts + 1;
+      const lock     = attempts >= MAX_FAILED_ATTEMPTS;
+      await prisma.admin.update({
+        where: { id: admin.id },
+        data: {
+          failedLoginAttempts: lock ? 0 : attempts,
+          lockedUntil: lock ? new Date(Date.now() + LOCK_DURATION_MIN * 60000) : null,
+        },
+      });
+      await audit(req, { action: "LOGIN_FAILED", targetType: "Admin", targetId: admin.id, adminId: admin.id });
+      return error(
+        res,
+        lock
+          ? `Trop de tentatives. Compte verrouillé ${LOCK_DURATION_MIN} min.`
+          : "Identifiants incorrects",
+        lock ? 423 : 401
+      );
+    }
+
+    // Succès : reset compteur + horodatage
+    await prisma.admin.update({
+      where: { id: admin.id },
+      data:  { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
+    });
+
+    const accessToken = signAccessToken(admin);
+    await issueRefreshToken(res, req, admin.id);
+    await audit(req, { action: "LOGIN", adminId: admin.id });
 
     logger.info(`🔐 Admin connecté: ${email}`);
-    return success(res, { token, admin: { id: admin.id, email, fullName: admin.fullName, role: admin.role } });
+    return success(res, { accessToken, admin: publicAdmin(admin) });
 
   } catch (err) {
     logger.error("Erreur login:", err);
@@ -33,75 +100,78 @@ const login = async (req, res) => {
   }
 };
 
-// ── Recherche par matricule (interface scolarité) ─────────────────────────────
-const searchByMatricule = async (req, res) => {
-  const { matricule } = req.params;
+// ── Refresh : échange le cookie refresh contre un nouvel access token ──────────
+const refresh = async (req, res) => {
+  const raw = req.cookies?.[REFRESH_COOKIE];
+  if (!raw) return error(res, "Session expirée", 401);
+
   try {
-    const student = await prisma.student.findFirst({
-      where: { matricule },
-      include: {
-        establishment: true,
-        program:       { include: { level: true } },
-        payments: {
-          orderBy: { createdAt: "desc" },
-          include: { receipt: true },
-        },
-      },
+    const stored = await prisma.refreshToken.findUnique({
+      where:   { tokenHash: hashToken(raw) },
+      include: { admin: { include: { establishment: true } } },
     });
 
-    if (!student) return error(res, "Aucun étudiant trouvé avec ce matricule", 404);
+    const invalid =
+      !stored || stored.revokedAt || stored.expiresAt < new Date() || !stored.admin?.isActive;
 
-    // Paiement validé de l'année en cours
-    const latestSuccess = student.payments.find((p) => p.status === "SUCCESS");
+    if (invalid) {
+      res.clearCookie(REFRESH_COOKIE, refreshCookieOptions());
+      return error(res, "Session invalide, reconnectez-vous", 401);
+    }
 
-    return success(res, {
-      student: {
-        id:            student.id,
-        matricule:     student.matricule,
-        lastName:      student.lastName,
-        firstName:     student.firstName,
-        fullName:      `${student.lastName} ${student.firstName}`,
-        gender:        student.gender,
-        birthDate:     student.birthDate,
-        birthPlace:    student.birthPlace,
-        phone:         student.phone,
-        establishment: student.establishment.name,
-        program:       student.program.name,
-        level:         student.program.level.name,
-      },
-      paymentStatus:  latestSuccess ? "PAYÉ" : "NON PAYÉ",
-      latestPayment:  latestSuccess
-        ? {
-            receiptNumber: latestSuccess.receiptNumber,
-            amount:        Number(latestSuccess.amount),
-            academicYear:  latestSuccess.academicYear,
-            niveau:        `${student.program.level.name} ${latestSuccess.studyYear}`,
-            paidAt:        latestSuccess.paidAt,
-            paymentMethod: latestSuccess.paymentMethod,
-            hasReceipt:    !!latestSuccess.receipt,
-          }
-        : null,
-      allPayments: student.payments.map((p) => ({
-        receiptNumber: p.receiptNumber,
-        amount:        Number(p.amount),
-        academicYear:  p.academicYear,
-        niveau:        `${student.program.level.name} ${p.studyYear}`,
-        status:        p.status,
-        method:        p.paymentMethod,
-        createdAt:     p.createdAt,
-        paidAt:        p.paidAt,
-      })),
+    // Rotation : on révoque l'ancien et on en émet un nouveau
+    await prisma.refreshToken.update({
+      where: { id: stored.id },
+      data:  { revokedAt: new Date() },
     });
+    await issueRefreshToken(res, req, stored.adminId);
+
+    const accessToken = signAccessToken(stored.admin);
+    return success(res, { accessToken, admin: publicAdmin(stored.admin) });
 
   } catch (err) {
-    logger.error("Erreur searchByMatricule:", err);
-    return error(res, "Erreur lors de la recherche", 500);
+    logger.error("Erreur refresh:", err);
+    return error(res, "Erreur serveur", 500);
   }
 };
 
-// ── Recherche par numéro de reçu (vérification principale scolarité) ──────────
-// C'est le flux normal : l'étudiant présente son reçu (PDF / QR), l'admin
-// retrouve le paiement par son receiptNumber et lit les infos de l'étudiant.
+// ── Logout : révoque le refresh token courant ─────────────────────────────────
+const logout = async (req, res) => {
+  const raw = req.cookies?.[REFRESH_COOKIE];
+  try {
+    if (raw) {
+      await prisma.refreshToken.updateMany({
+        where: { tokenHash: hashToken(raw), revokedAt: null },
+        data:  { revokedAt: new Date() },
+      });
+    }
+  } catch (err) {
+    logger.error("Erreur logout:", err);
+  }
+  res.clearCookie(REFRESH_COOKIE, refreshCookieOptions());
+  return success(res, null, "Déconnecté");
+};
+
+// ── Profil de l'admin connecté ────────────────────────────────────────────────
+const me = async (req, res) => {
+  try {
+    const admin = await prisma.admin.findUnique({
+      where:   { id: req.admin.id },
+      include: { establishment: true },
+    });
+    if (!admin || !admin.isActive) return error(res, "Compte introuvable", 401);
+    return success(res, { admin: publicAdmin(admin) });
+  } catch (err) {
+    logger.error("Erreur me:", err);
+    return error(res, "Erreur serveur", 500);
+  }
+};
+
+// Filtre Prisma "Payment" restreint à l'établissement de l'admin (vide pour super admin)
+const scopedPaymentWhere = (req) =>
+  req.scope?.isSuperAdmin ? {} : { student: { establishmentId: req.scope.establishmentId } };
+
+// ── Vérification par numéro de reçu (action métier principale) ────────────────
 const searchByReceipt = async (req, res) => {
   const { receiptNumber } = req.params;
   try {
@@ -115,6 +185,15 @@ const searchByReceipt = async (req, res) => {
     });
 
     if (!payment) return error(res, "Aucun paiement trouvé avec ce numéro de reçu", 404);
+
+    // Cloisonnement : un admin d'établissement ne vérifie que SES étudiants
+    if (!req.scope.isSuperAdmin && payment.student.establishmentId !== req.scope.establishmentId) {
+      return error(res, "Ce reçu n'appartient pas à votre établissement", 403);
+    }
+
+    await audit(req, {
+      action: "VERIFY_RECEIPT", targetType: "Payment", targetId: payment.id, detail: receiptNumber,
+    });
 
     return success(res, {
       receiptNumber: payment.receiptNumber,
@@ -147,25 +226,102 @@ const searchByReceipt = async (req, res) => {
   }
 };
 
-// ── Liste des paiements (avec filtres) ────────────────────────────────────────
+// ── Recherche par matricule (secondaire) ──────────────────────────────────────
+const searchByMatricule = async (req, res) => {
+  const { matricule } = req.params;
+  try {
+    const student = await prisma.student.findFirst({
+      where: { matricule },
+      include: {
+        establishment: true,
+        program:       { include: { level: true } },
+        payments:      { orderBy: { createdAt: "desc" }, include: { receipt: true } },
+      },
+    });
+
+    if (!student) return error(res, "Aucun étudiant trouvé avec ce matricule", 404);
+
+    if (!req.scope.isSuperAdmin && student.establishmentId !== req.scope.establishmentId) {
+      return error(res, "Cet étudiant n'appartient pas à votre établissement", 403);
+    }
+
+    await audit(req, {
+      action: "SEARCH_MATRICULE", targetType: "Student", targetId: student.id, detail: matricule,
+    });
+
+    const latestSuccess = student.payments.find((p) => p.status === "SUCCESS");
+
+    return success(res, {
+      student: {
+        id:            student.id,
+        matricule:     student.matricule,
+        lastName:      student.lastName,
+        firstName:     student.firstName,
+        fullName:      `${student.lastName} ${student.firstName}`,
+        gender:        student.gender,
+        birthDate:     student.birthDate,
+        birthPlace:    student.birthPlace,
+        phone:         student.phone,
+        establishment: student.establishment.name,
+        program:       student.program.name,
+        level:         student.program.level.name,
+      },
+      paymentStatus: latestSuccess ? "PAYÉ" : "NON PAYÉ",
+      latestPayment: latestSuccess
+        ? {
+            receiptNumber: latestSuccess.receiptNumber,
+            amount:        Number(latestSuccess.amount),
+            academicYear:  latestSuccess.academicYear,
+            niveau:        `${student.program.level.name} ${latestSuccess.studyYear}`,
+            paidAt:        latestSuccess.paidAt,
+            paymentMethod: latestSuccess.paymentMethod,
+            hasReceipt:    !!latestSuccess.receipt,
+          }
+        : null,
+      allPayments: student.payments.map((p) => ({
+        receiptNumber: p.receiptNumber,
+        amount:        Number(p.amount),
+        academicYear:  p.academicYear,
+        niveau:        `${student.program.level.name} ${p.studyYear}`,
+        status:        p.status,
+        method:        p.paymentMethod,
+        createdAt:     p.createdAt,
+        paidAt:        p.paidAt,
+      })),
+    });
+
+  } catch (err) {
+    logger.error("Erreur searchByMatricule:", err);
+    return error(res, "Erreur lors de la recherche", 500);
+  }
+};
+
+// ── Liste des paiements (cloisonnée) ──────────────────────────────────────────
 const listPayments = async (req, res) => {
-  const { page = 1, limit = 20, status, method, establishmentId, academicYear } = req.query;
+  const { page = 1, limit = 20, status, method, establishmentId, academicYear, search } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   try {
-    const where = {};
-    if (status)        where.status        = status;
-    if (method)        where.paymentMethod = method;
-    if (academicYear)  where.academicYear  = academicYear;
-    if (establishmentId) {
-      where.student = { establishmentId };
+    const where = { ...scopedPaymentWhere(req) };
+    if (status)       where.status        = status;
+    if (method)       where.paymentMethod = method;
+    if (academicYear) where.academicYear  = academicYear;
+
+    // Le super admin peut filtrer par établissement ; l'admin d'établissement est déjà restreint
+    if (req.scope.isSuperAdmin && establishmentId) {
+      where.student = { ...(where.student || {}), establishmentId };
+    }
+    if (search) {
+      where.OR = [
+        { receiptNumber: { contains: search, mode: "insensitive" } },
+        { student: { ...(where.student || {}), matricule: { contains: search, mode: "insensitive" } } },
+        { student: { ...(where.student || {}), lastName:  { contains: search, mode: "insensitive" } } },
+      ];
     }
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
-        where,
-        skip,
-        take:    parseInt(limit),
+        where, skip, take: parseInt(limit),
         orderBy: { createdAt: "desc" },
         include: {
           student: { include: { establishment: true } },
@@ -199,60 +355,73 @@ const listPayments = async (req, res) => {
   }
 };
 
-// ── Statistiques dashboard ────────────────────────────────────────────────────
+// ── Statistiques dashboard (cloisonnées) ──────────────────────────────────────
 const getDashboardStats = async (req, res) => {
   const { academicYear } = req.query;
   try {
-    const yearFilter = academicYear ? { academicYear } : {};
+    const base = { ...scopedPaymentWhere(req), ...(academicYear ? { academicYear } : {}) };
 
     const [
-      totalPayments,
-      successPayments,
-      pendingPayments,
-      failedPayments,
-      revenueData,
-      byMethod,
-      recentPayments,
+      totalPayments, successPayments, pendingPayments, failedPayments,
+      revenueData, byMethod, recentPayments,
     ] = await Promise.all([
-      prisma.payment.count({ where: yearFilter }),
-      prisma.payment.count({ where: { ...yearFilter, status: "SUCCESS" } }),
-      prisma.payment.count({ where: { ...yearFilter, status: "PENDING" } }),
-      prisma.payment.count({ where: { ...yearFilter, status: "FAILED" } }),
-      prisma.payment.aggregate({
-        where:   { ...yearFilter, status: "SUCCESS" },
-        _sum:    { amount: true },
-      }),
+      prisma.payment.count({ where: base }),
+      prisma.payment.count({ where: { ...base, status: "SUCCESS" } }),
+      prisma.payment.count({ where: { ...base, status: "PENDING" } }),
+      prisma.payment.count({ where: { ...base, status: "FAILED" } }),
+      prisma.payment.aggregate({ where: { ...base, status: "SUCCESS" }, _sum: { amount: true } }),
       prisma.payment.groupBy({
-        by:      ["paymentMethod"],
-        where:   { ...yearFilter, status: "SUCCESS" },
-        _count:  true,
-        _sum:    { amount: true },
+        by: ["paymentMethod"],
+        where: { ...base, status: "SUCCESS" },
+        _count: true, _sum: { amount: true },
       }),
       prisma.payment.findMany({
-        where:   { status: "SUCCESS", ...yearFilter },
-        take:    5,
-        orderBy: { paidAt: "desc" },
-        include: { student: true },
+        where: { ...base, status: "SUCCESS" },
+        take: 6, orderBy: { paidAt: "desc" },
+        include: { student: { include: { establishment: true } } },
       }),
     ]);
 
+    // Répartition par établissement (super admin uniquement)
+    let byEstablishment = null;
+    if (req.scope.isSuperAdmin) {
+      const establishments = await prisma.establishment.findMany({
+        where: { isActive: true }, orderBy: { name: "asc" },
+        select: { id: true, name: true, code: true },
+      });
+      byEstablishment = await Promise.all(
+        establishments.map(async (e) => {
+          const w = { ...(academicYear ? { academicYear } : {}), student: { establishmentId: e.id } };
+          const [count, rev] = await Promise.all([
+            prisma.payment.count({ where: { ...w, status: "SUCCESS" } }),
+            prisma.payment.aggregate({ where: { ...w, status: "SUCCESS" }, _sum: { amount: true } }),
+          ]);
+          return { id: e.id, name: e.name, code: e.code, count, revenue: Number(rev._sum.amount || 0) };
+        })
+      );
+    }
+
     return success(res, {
+      scope: {
+        isSuperAdmin:  req.scope.isSuperAdmin,
+        establishmentId: req.scope.establishmentId,
+      },
       overview: {
-        total:    totalPayments,
-        success:  successPayments,
-        pending:  pendingPayments,
-        failed:   failedPayments,
-        revenue:  Number(revenueData._sum.amount || 0),
+        total:   totalPayments,
+        success: successPayments,
+        pending: pendingPayments,
+        failed:  failedPayments,
+        revenue: Number(revenueData._sum.amount || 0),
       },
       byMethod: byMethod.map((m) => ({
-        method:  m.paymentMethod,
-        count:   m._count,
-        revenue: Number(m._sum.amount || 0),
+        method: m.paymentMethod, count: m._count, revenue: Number(m._sum.amount || 0),
       })),
+      byEstablishment,
       recentPayments: recentPayments.map((p) => ({
         receiptNumber: p.receiptNumber,
         student:       `${p.student.lastName} ${p.student.firstName}`,
         matricule:     p.student.matricule,
+        establishment: p.student.establishment.name,
         amount:        Number(p.amount),
         method:        p.paymentMethod,
         paidAt:        p.paidAt,
@@ -265,4 +434,7 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
-module.exports = { login, searchByMatricule, searchByReceipt, listPayments, getDashboardStats };
+module.exports = {
+  login, refresh, logout, me,
+  searchByMatricule, searchByReceipt, listPayments, getDashboardStats,
+};

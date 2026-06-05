@@ -51,19 +51,39 @@ async function main() {
   }
   console.log(`✅ ${ESTABLISHMENTS.length} établissements · ${nbParcours} nouveaux parcours`);
 
-  // ── Admin par défaut ────────────────────────────────────────────────────────
-  const passwordHash = await bcrypt.hash("Admin@2025!", 12);
+  // ── Super admin (supervision globale) ───────────────────────────────────────
+  const superHash = await bcrypt.hash("Admin@2025!", 12);
   await prisma.admin.upsert({
     where: { email: "admin@umg-paytech.cg" },
-    update: {},
+    update: { role: "SUPER_ADMIN", establishmentId: null },
     create: {
       email: "admin@umg-paytech.cg",
-      passwordHash,
+      passwordHash: superHash,
       fullName: "Super Administrateur",
       role: "SUPER_ADMIN",
     },
   });
-  console.log("✅ Admin → admin@umg-paytech.cg / Admin@2025!");
+  console.log("✅ Super admin → admin@umg-paytech.cg / Admin@2025!");
+
+  // ── Admin d'établissement d'exemple (rattaché à la 1ʳᵉ faculté du catalogue) ──
+  const firstEst = await prisma.establishment.findUnique({ where: { code: ESTABLISHMENTS[0].code } });
+  if (firstEst) {
+    const estHash = await bcrypt.hash("Faculte@2025!", 12);
+    const estEmail = `admin.${firstEst.code.toLowerCase()}@umg-paytech.cg`;
+    await prisma.admin.upsert({
+      where: { email: estEmail },
+      update: { role: "ESTABLISHMENT_ADMIN", establishmentId: firstEst.id },
+      create: {
+        email: estEmail,
+        passwordHash: estHash,
+        fullName: `Admin ${firstEst.name}`,
+        role: "ESTABLISHMENT_ADMIN",
+        establishmentId: firstEst.id,
+      },
+    });
+    console.log(`✅ Admin établissement → ${estEmail} / Faculte@2025! (${firstEst.name})`);
+  }
+
   console.log("🎉 Seed terminé !");
 }
 

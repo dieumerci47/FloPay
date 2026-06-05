@@ -1,64 +1,77 @@
 // src/routes/index.js
-const express = require("express");
-const router  = express.Router();
+const express   = require("express");
+const rateLimit = require("express-rate-limit");
+const router    = express.Router();
 
 const { initiatePayment, pawapayWebhook, getPaymentStatus, downloadReceipt, verifyReceipt }
   = require("../controllers/payment.controller");
 
-const { login, searchByMatricule, searchByReceipt, listPayments, getDashboardStats }
+const { login, refresh, logout, me,
+        searchByMatricule, searchByReceipt, listPayments, getDashboardStats }
   = require("../controllers/admin.controller");
+
+const { listAdmins, createAdmin, setAdminActive, resetAdminPassword, listAuditLogs }
+  = require("../controllers/adminManagement.controller");
 
 const { getEstablishments, getProgramsByEstablishment, getLevels,
         createEstablishment, createLevel, createProgram }
   = require("../controllers/establishment.controller");
 
-const { authenticate, requireSuperAdmin }
+const { authenticate, requireSuperAdmin, attachScope }
   = require("../middlewares/auth.middleware");
 
 const {
   validate, paymentRules, loginRules, establishmentRules, levelRules, programRules,
+  createAdminRules, setActiveRules, resetPasswordRules,
 } = require("../middlewares/validate.middleware");
 
-// ══════════════════════════════════════════════════════════════════════════════
-// PUBLIC — Routes accessibles sans authentification
-// ══════════════════════════════════════════════════════════════════════════════
-
-// Établissements, niveaux & programmes (pour le formulaire étudiant)
-router.get("/establishments",                        getEstablishments);
-router.get("/establishments/:establishmentId/programs", getProgramsByEstablishment);
-router.get("/levels",                                getLevels);
-
-// Paiement étudiant
-router.post("/payments",                paymentRules, validate, initiatePayment);
-router.get("/payments/verify/:receiptNumber",         verifyReceipt);   // vérification publique (QR)
-router.get("/payments/:paymentId/status",            getPaymentStatus);
-router.get("/payments/:receiptNumber/receipt",        downloadReceipt);
-
-// Webhook PawaPay — doit rester public (PawaPay ne s'authentifie pas avec notre JWT)
-router.post("/payments/pawapay/webhook", pawapayWebhook);
+// Rate-limit dédié à l'authentification (anti brute-force réseau)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max:      20,
+  message:  { success: false, message: "Trop de tentatives de connexion, réessayez plus tard" },
+});
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ADMIN — Routes protégées (scolarité centrale)
+// PUBLIC
 // ══════════════════════════════════════════════════════════════════════════════
+router.get("/establishments",                            getEstablishments);
+router.get("/establishments/:establishmentId/programs",  getProgramsByEstablishment);
+router.get("/levels",                                    getLevels);
 
-// Auth
-router.post("/admin/auth/login", loginRules, validate, login);
+router.post("/payments",                   paymentRules, validate, initiatePayment);
+router.get("/payments/verify/:receiptNumber",            verifyReceipt);
+router.get("/payments/:paymentId/status",                getPaymentStatus);
+router.get("/payments/:receiptNumber/receipt",           downloadReceipt);
+router.post("/payments/pawapay/webhook",                 pawapayWebhook);
 
-// Dashboard & recherche
-router.get("/admin/dashboard",                   authenticate, getDashboardStats);
-router.get("/admin/receipts/:receiptNumber",     authenticate, searchByReceipt);   // vérification principale (par reçu)
-router.get("/admin/students/:matricule",         authenticate, searchByMatricule); // secondaire (si matricule fourni)
-router.get("/admin/payments",                    authenticate, listPayments);
+// ══════════════════════════════════════════════════════════════════════════════
+// ADMIN — Authentification
+// ══════════════════════════════════════════════════════════════════════════════
+router.post("/admin/auth/login",   authLimiter, loginRules, validate, login);
+router.post("/admin/auth/refresh", refresh);                 // s'appuie sur le cookie httpOnly
+router.post("/admin/auth/logout",  logout);
+router.get ("/admin/auth/me",      authenticate, me);
 
-// Gestion établissements & programmes (Super Admin seulement)
-router.post("/admin/establishments",
-  authenticate, requireSuperAdmin, establishmentRules, validate, createEstablishment
-);
-router.post("/admin/levels",
-  authenticate, requireSuperAdmin, levelRules, validate, createLevel
-);
-router.post("/admin/programs",
-  authenticate, requireSuperAdmin, programRules, validate, createProgram
-);
+// ══════════════════════════════════════════════════════════════════════════════
+// ADMIN — Espace cloisonné (super admin = global, sinon = son établissement)
+// ══════════════════════════════════════════════════════════════════════════════
+router.get("/admin/dashboard",               authenticate, attachScope, getDashboardStats);
+router.get("/admin/receipts/:receiptNumber", authenticate, attachScope, searchByReceipt);
+router.get("/admin/students/:matricule",     authenticate, attachScope, searchByMatricule);
+router.get("/admin/payments",                authenticate, attachScope, listPayments);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SUPER ADMIN — Gestion des admins, catalogue & audit
+// ══════════════════════════════════════════════════════════════════════════════
+router.get ("/admin/admins",            authenticate, requireSuperAdmin, listAdmins);
+router.post("/admin/admins",            authenticate, requireSuperAdmin, createAdminRules, validate, createAdmin);
+router.patch("/admin/admins/:id/status",authenticate, requireSuperAdmin, setActiveRules, validate, setAdminActive);
+router.patch("/admin/admins/:id/password", authenticate, requireSuperAdmin, resetPasswordRules, validate, resetAdminPassword);
+router.get ("/admin/audit",             authenticate, requireSuperAdmin, listAuditLogs);
+
+router.post("/admin/establishments", authenticate, requireSuperAdmin, establishmentRules, validate, createEstablishment);
+router.post("/admin/levels",         authenticate, requireSuperAdmin, levelRules, validate, createLevel);
+router.post("/admin/programs",       authenticate, requireSuperAdmin, programRules, validate, createProgram);
 
 module.exports = router;

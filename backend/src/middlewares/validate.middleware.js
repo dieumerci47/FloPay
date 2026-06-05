@@ -60,4 +60,32 @@ const programRules = [
   body("establishmentId").isUUID().withMessage("ID établissement invalide"),
 ];
 
-module.exports = { validate, paymentRules, loginRules, establishmentRules, levelRules, programRules };
+// ── Règles : gestion des admins (super admin) ─────────────────────────────────
+const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+const createAdminRules = [
+  body("email").isEmail().withMessage("Email invalide").normalizeEmail(),
+  body("fullName").trim().notEmpty().withMessage("Nom complet requis"),
+  body("password")
+    .matches(STRONG_PASSWORD)
+    .withMessage("Mot de passe : 8 caractères min, avec majuscule, minuscule et chiffre"),
+  body("role").isIn(["SUPER_ADMIN", "ESTABLISHMENT_ADMIN"]).withMessage("Rôle invalide"),
+  body("establishmentId")
+    .if(body("role").equals("ESTABLISHMENT_ADMIN"))
+    .isUUID().withMessage("Établissement requis pour un admin d'établissement"),
+];
+
+const setActiveRules = [
+  body("isActive").isBoolean().withMessage("Statut invalide").toBoolean(),
+];
+
+const resetPasswordRules = [
+  body("password")
+    .matches(STRONG_PASSWORD)
+    .withMessage("Mot de passe : 8 caractères min, avec majuscule, minuscule et chiffre"),
+];
+
+module.exports = {
+  validate, paymentRules, loginRules, establishmentRules, levelRules, programRules,
+  createAdminRules, setActiveRules, resetPasswordRules,
+};

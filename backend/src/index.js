@@ -7,6 +7,7 @@ const cors       = require("cors");
 const morgan     = require("morgan");
 const compression = require("compression");
 const rateLimit  = require("express-rate-limit");
+const cookieParser = require("cookie-parser");
 
 const { connectDB }  = require("./config/database");
 const routes         = require("./routes/index");
@@ -64,6 +65,7 @@ app.use("/api/payments", rateLimit({
 app.use("/api/payments/pawapay/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // ── Logs HTTP ─────────────────────────────────────────────────────────────────
 app.use(morgan("dev", {
