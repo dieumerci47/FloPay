@@ -15,6 +15,7 @@ export default function Admins() {
   const [establishments, setEst] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [resetTarget, setResetTarget] = useState(null);
   const [toast, setToast]     = useState(null);
 
   const load = () => {
@@ -28,13 +29,6 @@ export default function Admins() {
   const toggleActive = async (a) => {
     try { await apiSetAdminActive(a.id, !a.isActive); flash(a.isActive ? "Compte désactivé" : "Compte réactivé"); load(); }
     catch (e) { flash(e.response?.data?.message || "Échec", false); }
-  };
-
-  const resetPwd = async (a) => {
-    const pwd = window.prompt(`Nouveau mot de passe pour ${a.fullName}\n(8+ caractères, 1 majuscule, 1 minuscule, 1 chiffre)`);
-    if (!pwd) return;
-    try { await apiResetAdminPwd(a.id, pwd); flash("Mot de passe réinitialisé"); }
-    catch (e) { flash(e.response?.data?.message || "Mot de passe refusé", false); }
   };
 
   return (
@@ -83,7 +77,7 @@ export default function Admins() {
                 </div>
                 {a.id !== current.id && (
                   <div className="flex gap-2">
-                    <button onClick={() => resetPwd(a)} className="rounded-lg bg-white/5 px-3 py-1.5 text-[0.74rem] font-semibold text-white/70 transition hover:bg-white/10">Mot de passe</button>
+                    <button onClick={() => setResetTarget(a)} className="rounded-lg bg-white/5 px-3 py-1.5 text-[0.74rem] font-semibold text-white/70 transition hover:bg-white/10">Mot de passe</button>
                     <button onClick={() => toggleActive(a)}
                       className={"rounded-lg px-3 py-1.5 text-[0.74rem] font-semibold transition " +
                         (a.isActive ? "bg-red-500/10 text-red-300 hover:bg-red-500/20" : "bg-mint/15 text-emerald-300 hover:bg-mint/25")}>
@@ -105,6 +99,97 @@ export default function Admins() {
           onCreated={() => { setShowCreate(false); flash("Admin créé"); load(); }}
         />
       )}
+
+      {resetTarget && (
+        <ResetPasswordModal
+          admin={resetTarget}
+          onClose={() => setResetTarget(null)}
+          onDone={() => { setResetTarget(null); flash("Mot de passe réinitialisé"); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Règle alignée sur le backend : 8+ car., maj, min, chiffre, caractère spécial
+const STRONG = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
+function ResetPasswordModal({ admin, onClose, onDone }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm]   = useState("");
+  const [show, setShow]         = useState(false);
+  const [error, setError]       = useState(null);
+  const [loading, setLoading]   = useState(false);
+
+  const generate = () => {
+    const sets = ["abcdefghijkmnpqrstuvwxyz", "ABCDEFGHJKLMNPQRSTUVWXYZ", "23456789", "@#$%&*!?"];
+    let pw = sets.map((s) => s[Math.floor(Math.random() * s.length)]).join("");
+    const all = sets.join("");
+    while (pw.length < 12) pw += all[Math.floor(Math.random() * all.length)];
+    pw = pw.split("").sort(() => Math.random() - 0.5).join("");
+    setPassword(pw); setConfirm(pw); setShow(true);
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    if (password !== confirm) return setError("Les deux mots de passe ne correspondent pas.");
+    if (!STRONG.test(password)) return setError("8 caractères min, avec majuscule, minuscule, chiffre et caractère spécial.");
+    setLoading(true);
+    try {
+      await apiResetAdminPwd(admin.id, password);
+      onDone();
+    } catch (err) {
+      setError(err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || "Réinitialisation impossible");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <form onSubmit={submit} className="relative w-full max-w-md animate-fade-up rounded-2xl border border-white/10 bg-ink-900 p-6 shadow-2xl">
+        <div className="mb-1 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gold/15 text-gold"><Shield className="h-5 w-5" /></span>
+            <h2 className="font-display text-lg font-bold text-white">Réinitialiser le mot de passe</h2>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-white"><Cross className="h-5 w-5" /></button>
+        </div>
+        <p className="mb-4 text-[0.82rem] text-white/45">
+          Pour <span className="font-semibold text-white/80">{admin.fullName}</span> ({admin.email}).
+          L'admin devra le changer à sa prochaine connexion.
+        </p>
+
+        {error && <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-[0.82rem] text-red-300">{error}</div>}
+
+        <label className="block">
+          <span className="mb-1.5 block text-[0.72rem] font-semibold uppercase tracking-wider text-white/45">Nouveau mot de passe provisoire</span>
+          <input
+            type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} autoFocus required
+            placeholder="8+ car., Maj, min, chiffre, spécial"
+            className="w-full rounded-xl border border-white/10 bg-ink-950/60 px-3.5 py-2.5 text-[0.88rem] text-white placeholder-white/25 outline-none focus:border-gold/50 focus:ring-2 focus:ring-gold/20"
+          />
+        </label>
+        <label className="mt-3 block">
+          <span className="mb-1.5 block text-[0.72rem] font-semibold uppercase tracking-wider text-white/45">Confirmer</span>
+          <input
+            type={show ? "text" : "password"} value={confirm} onChange={(e) => setConfirm(e.target.value)} required
+            placeholder="Retapez le mot de passe"
+            className="w-full rounded-xl border border-white/10 bg-ink-950/60 px-3.5 py-2.5 text-[0.88rem] text-white placeholder-white/25 outline-none focus:border-gold/50 focus:ring-2 focus:ring-gold/20"
+          />
+        </label>
+
+        <div className="mt-2 flex items-center justify-between">
+          <button type="button" onClick={generate} className="text-[0.74rem] font-semibold text-gold hover:text-gold-300">Générer un mot de passe</button>
+          <button type="button" onClick={() => setShow((s) => !s)} className="text-[0.74rem] font-medium text-white/40 hover:text-white/70">{show ? "Cacher" : "Afficher"}</button>
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>Annuler</Button>
+          <Button type="submit" loading={loading} className="flex-1">Réinitialiser</Button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -146,7 +231,10 @@ function CreateAdminModal({ establishments, onClose, onCreated }) {
         <div className="space-y-3.5">
           <ModalField label="Nom complet" value={form.fullName} onChange={(v) => set("fullName", v)} placeholder="Jean Mabiala" required />
           <ModalField label="Email" type="email" value={form.email} onChange={(v) => set("email", v)} placeholder="admin.fst@umg-paytech.cg" required />
-          <ModalField label="Mot de passe" type="password" value={form.password} onChange={(v) => set("password", v)} placeholder="8+ car., Maj, min, chiffre" required />
+          <div>
+            <ModalField label="Mot de passe provisoire" type="password" value={form.password} onChange={(v) => set("password", v)} placeholder="8+ car., Maj, min, chiffre, spécial" required />
+            <p className="mt-1 text-[0.7rem] text-white/35">À communiquer à l'admin par un canal sûr. Il devra le changer à sa première connexion.</p>
+          </div>
 
           <div>
             <span className="mb-1.5 block text-[0.72rem] font-semibold uppercase tracking-wider text-white/45">Rôle</span>

@@ -79,6 +79,7 @@ async function main() {
         fullName: `Admin ${firstEst.name}`,
         role: "ESTABLISHMENT_ADMIN",
         establishmentId: firstEst.id,
+        mustChangePassword: true,   // démontre le flux « 1ʳᵉ connexion »
       },
     });
     console.log(`✅ Admin établissement → ${estEmail} / Faculte@2025! (${firstEst.name})`);

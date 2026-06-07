@@ -13,6 +13,7 @@ const publicAdmin = (a) => ({
   fullName:      a.fullName,
   role:          a.role,
   isActive:      a.isActive,
+  mustChangePassword: a.mustChangePassword,
   lastLoginAt:   a.lastLoginAt,
   establishment: a.establishment
     ? { id: a.establishment.id, name: a.establishment.name, code: a.establishment.code }
@@ -52,7 +53,8 @@ const createAdmin = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const admin = await prisma.admin.create({
-      data: { email, fullName, passwordHash, role, establishmentId: estId },
+      // Mot de passe provisoire → l'admin devra le changer à sa 1ʳᵉ connexion
+      data: { email, fullName, passwordHash, role, establishmentId: estId, mustChangePassword: true },
       include: { establishment: true },
     });
 
@@ -111,7 +113,8 @@ const resetAdminPassword = async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
     await prisma.admin.update({
       where: { id },
-      data:  { passwordHash, failedLoginAttempts: 0, lockedUntil: null },
+      // Mot de passe provisoire → à changer à la prochaine connexion
+      data:  { passwordHash, failedLoginAttempts: 0, lockedUntil: null, mustChangePassword: true },
     });
     // Sessions invalidées par sécurité
     await prisma.refreshToken.updateMany({
@@ -129,10 +132,15 @@ const resetAdminPassword = async (req, res) => {
 
 // ── Journal d'audit ───────────────────────────────────────────────────────────
 const listAuditLogs = async (req, res) => {
-  const { page = 1, limit = 30, action } = req.query;
+  const { page = 1, limit = 30, action, from } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
   try {
-    const where = action ? { action } : {};
+    const where = {};
+    if (action) where.action = action;
+    if (from) {
+      const d = new Date(from);
+      if (!isNaN(d)) where.createdAt = { gte: d };
+    }
     const [logs, total] = await Promise.all([
       prisma.auditLog.findMany({
         where, skip, take: parseInt(limit),

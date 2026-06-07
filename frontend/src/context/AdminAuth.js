@@ -38,8 +38,10 @@ export function AdminAuthProvider({ children }) {
 
   const value = {
     admin,
+    setAdmin,
     loading,
     isSuperAdmin: admin?.role === "SUPER_ADMIN",
+    mustChangePassword: !!admin?.mustChangePassword,
     login,
     logout,
   };

@@ -11,6 +11,12 @@ const validate = (req, res, next) => {
   next();
 };
 
+// ── Helpers communs ───────────────────────────────────────────────────────────
+// Numéro mobile congolais : national 0[5|6]XXXXXXX, ou international (+)242…,
+// avec ou sans le 0 (MTN = 06, Airtel = 05).
+const CONGO_MOBILE = /^(\+?242)?0?[56]\d{7}$/;
+const stripPhone   = (v) => String(v || "").replace(/[\s.\-()]/g, "");
+
 // ── Règles de validation ──────────────────────────────────────────────────────
 
 const paymentRules = [
@@ -22,7 +28,9 @@ const paymentRules = [
   body("gender")
     .isIn(["M", "F"]).withMessage("Sexe invalide (M ou F)"),
   body("phone")
-    .trim().notEmpty().withMessage("Le téléphone est requis"),
+    .customSanitizer(stripPhone)
+    .notEmpty().withMessage("Le téléphone est requis")
+    .matches(CONGO_MOBILE).withMessage("Numéro congolais invalide (ex. 06 XXX XX XX ou 05 XXX XX XX)"),
   body("establishmentId")
     .isUUID().withMessage("ID établissement invalide"),
   body("programId")
@@ -34,8 +42,9 @@ const paymentRules = [
   body("paymentMethod")
     .isIn(["MTN", "AIRTEL"]).withMessage("Méthode de paiement invalide (MTN ou AIRTEL)"),
   body("paymentPhone")
-    .trim().notEmpty().withMessage("Le numéro Mobile Money est requis")
-    .matches(/^(\+?242|0)?[0-9]{8,9}$/).withMessage("Numéro de téléphone invalide pour le Congo"),
+    .customSanitizer(stripPhone)
+    .notEmpty().withMessage("Le numéro Mobile Money est requis")
+    .matches(CONGO_MOBILE).withMessage("Numéro Mobile Money invalide (MTN 06… ou Airtel 05…)"),
 ];
 
 const loginRules = [
@@ -61,14 +70,15 @@ const programRules = [
 ];
 
 // ── Règles : gestion des admins (super admin) ─────────────────────────────────
-const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const PASSWORD_MSG = "8 caractères min, avec majuscule, minuscule, chiffre et caractère spécial";
 
 const createAdminRules = [
   body("email").isEmail().withMessage("Email invalide").normalizeEmail(),
   body("fullName").trim().notEmpty().withMessage("Nom complet requis"),
   body("password")
     .matches(STRONG_PASSWORD)
-    .withMessage("Mot de passe : 8 caractères min, avec majuscule, minuscule et chiffre"),
+    .withMessage(`Mot de passe : ${PASSWORD_MSG}`),
   body("role").isIn(["SUPER_ADMIN", "ESTABLISHMENT_ADMIN"]).withMessage("Rôle invalide"),
   body("establishmentId")
     .if(body("role").equals("ESTABLISHMENT_ADMIN"))
@@ -82,10 +92,17 @@ const setActiveRules = [
 const resetPasswordRules = [
   body("password")
     .matches(STRONG_PASSWORD)
-    .withMessage("Mot de passe : 8 caractères min, avec majuscule, minuscule et chiffre"),
+    .withMessage(`Mot de passe : ${PASSWORD_MSG}`),
+];
+
+const changePasswordRules = [
+  body("currentPassword").notEmpty().withMessage("Mot de passe actuel requis"),
+  body("newPassword")
+    .matches(STRONG_PASSWORD)
+    .withMessage(`Nouveau mot de passe : ${PASSWORD_MSG}`),
 ];
 
 module.exports = {
   validate, paymentRules, loginRules, establishmentRules, levelRules, programRules,
-  createAdminRules, setActiveRules, resetPasswordRules,
+  createAdminRules, setActiveRules, resetPasswordRules, changePasswordRules,
 };

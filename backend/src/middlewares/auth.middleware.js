@@ -49,4 +49,13 @@ const attachScope = (req, res, next) => {
 const isOutOfScope = (req, establishmentId) =>
   !req.scope?.isSuperAdmin && req.scope?.establishmentId !== establishmentId;
 
-module.exports = { authenticate, requireSuperAdmin, attachScope, isOutOfScope };
+// Bloque toute action métier tant que le mot de passe provisoire n'est pas changé.
+// (À appliquer sur les routes protégées, SAUF /auth/change-password, /auth/me, /auth/logout.)
+const requirePasswordChanged = (req, res, next) => {
+  if (req.admin?.mustChangePassword) {
+    return error(res, "Vous devez d'abord changer votre mot de passe provisoire", 403);
+  }
+  next();
+};
+
+module.exports = { authenticate, requireSuperAdmin, attachScope, isOutOfScope, requirePasswordChanged };

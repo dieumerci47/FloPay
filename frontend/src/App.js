@@ -9,6 +9,7 @@ import { AdminAuthProvider } from "./context/AdminAuth";
 import AdminLayout from "./components/admin/AdminLayout";
 import ProtectedRoute from "./components/admin/ProtectedRoute";
 import AdminLogin from "./pages/admin/Login";
+import ChangePassword from "./pages/admin/ChangePassword";
 import Dashboard from "./pages/admin/Dashboard";
 import Verify from "./pages/admin/Verify";
 import Payments from "./pages/admin/Payments";
@@ -29,6 +30,14 @@ export default function App() {
           <AdminAuthProvider>
             <Routes>
               <Route path="login" element={<AdminLogin />} />
+              <Route
+                path="change-password"
+                element={
+                  <ProtectedRoute allowPasswordChange>
+                    <ChangePassword />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 element={
                   <ProtectedRoute>

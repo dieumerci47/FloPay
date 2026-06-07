@@ -271,12 +271,22 @@ const downloadReceipt = async (req, res) => {
     if (!payment.receipt)  return error(res, "Reçu pas encore généré", 404);
     if (payment.status !== "SUCCESS") return error(res, "Paiement non validé", 400);
 
-    const pdfPath = payment.receipt.pdfPath;
-    if (!fs.existsSync(pdfPath)) return error(res, "Fichier PDF introuvable", 404);
+    // Defense-in-depth : le fichier servi doit impérativement rester DANS le
+    // dossier des reçus (le chemin vient de la base, mais on ne fait pas confiance).
+    const baseDir  = path.resolve(process.env.PDF_OUTPUT_DIR || "./storage/receipts");
+    const resolved = path.resolve(payment.receipt.pdfPath);
+    const relative = path.relative(baseDir, resolved);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) {
+      logger.warn(`⛔ Accès hors dossier des reçus refusé: ${payment.receipt.pdfPath}`);
+      return error(res, "Fichier non autorisé", 403);
+    }
+    if (!fs.existsSync(resolved)) return error(res, "Fichier PDF introuvable", 404);
 
+    // Nom de fichier assaini pour l'en-tête (évite toute injection dans le header)
+    const safeName = `${receiptNumber.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`;
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${receiptNumber}.pdf"`);
-    fs.createReadStream(pdfPath).pipe(res);
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+    fs.createReadStream(resolved).pipe(res);
 
   } catch (err) {
     logger.error("Erreur downloadReceipt:", err);

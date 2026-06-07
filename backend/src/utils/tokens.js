@@ -13,10 +13,11 @@ const REFRESH_TTL_MS = parseInt(process.env.REFRESH_TOKEN_TTL_DAYS || "7", 10) *
 const signAccessToken = (admin) =>
   jwt.sign(
     {
-      id:              admin.id,
-      email:           admin.email,
-      role:            admin.role,
-      establishmentId: admin.establishmentId || null,
+      id:                 admin.id,
+      email:              admin.email,
+      role:               admin.role,
+      establishmentId:    admin.establishmentId || null,
+      mustChangePassword: !!admin.mustChangePassword,
     },
     ACCESS_SECRET,
     { expiresIn: ACCESS_TTL }

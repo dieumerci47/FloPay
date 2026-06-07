@@ -14,6 +14,7 @@ const routes         = require("./routes/index");
 const logger         = require("./utils/logger");
 const { error }      = require("./utils/response");
 const { startReconcileCron } = require("./services/reconcile.cron");
+const { startAuditRetention } = require("./services/audit.retention");
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -100,6 +101,7 @@ const start = async () => {
     logger.info(`📍 Environnement : ${process.env.NODE_ENV || "development"}`);
     logger.info(`🔗 Health check  : http://localhost:${PORT}/health`);
     startReconcileCron();
+    startAuditRetention();
   });
 };
 

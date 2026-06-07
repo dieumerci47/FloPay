@@ -10,6 +10,11 @@ import {
 } from "../services/api";
 // console.log(process.env.REACT_APP_API_URL);
 
+// Numéro mobile congolais : national 0[5|6]XXXXXXX ou international 242…, ± le 0
+// (MTN = 06, Airtel = 05)
+const CONGO_MOBILE = /^(\+?242)?0?[56]\d{7}$/;
+const cleanPhone = (v) => v.replace(/[\s.\-()]/g, "");
+
 // ── Icônes inline ──────────────────────────────────────────────────────────────
 const Icon = {
   Check: (p) => (
@@ -222,6 +227,8 @@ export default function PaymentForm() {
       if (!form.firstName.trim()) errs.firstName = "Le(s) prénom(s) est/sont requis";
       if (!form.gender) errs.gender = "Choisissez votre sexe";
       if (!form.phone.trim()) errs.phone = "Le téléphone est requis";
+      else if (!CONGO_MOBILE.test(cleanPhone(form.phone)))
+        errs.phone = "Numéro congolais invalide (ex : 06 XXX XX XX ou 05 XXX XX XX)";
     }
     if (s === 2) {
       if (!form.establishmentId) errs.establishmentId = "Choisissez un établissement";
@@ -232,8 +239,8 @@ export default function PaymentForm() {
     if (s === 3) {
       if (!form.paymentMethod) errs.paymentMethod = "Choisissez un mode de paiement";
       if (!form.paymentPhone.trim()) errs.paymentPhone = "Le numéro Mobile Money est requis";
-      else if (!/^(\+?242|0)?[0-9]{8,9}$/.test(form.paymentPhone.replace(/\s/g, "")))
-        errs.paymentPhone = "Numéro invalide (ex: 068786678)";
+      else if (!CONGO_MOBILE.test(cleanPhone(form.paymentPhone)))
+        errs.paymentPhone = "Numéro Mobile Money invalide (MTN 06… ou Airtel 05…)";
     }
     return errs;
   };

@@ -4,8 +4,8 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAdminAuth } from "../../context/AdminAuth";
 import { Spinner } from "./ui";
 
-export default function ProtectedRoute({ children, superOnly = false }) {
-  const { admin, loading, isSuperAdmin } = useAdminAuth();
+export default function ProtectedRoute({ children, superOnly = false, allowPasswordChange = false }) {
+  const { admin, loading, isSuperAdmin, mustChangePassword } = useAdminAuth();
   const location = useLocation();
 
   // Bootstrap de session en cours (tentative de refresh via cookie)
@@ -19,6 +19,11 @@ export default function ProtectedRoute({ children, superOnly = false }) {
 
   if (!admin) {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
+  }
+
+  // Mot de passe provisoire : on force le changement avant tout accès
+  if (mustChangePassword && !allowPasswordChange) {
+    return <Navigate to="/admin/change-password" replace />;
   }
 
   if (superOnly && !isSuperAdmin) {

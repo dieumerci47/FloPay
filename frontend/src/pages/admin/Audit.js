@@ -25,8 +25,17 @@ const ACTION_STYLE = {
   RESET_PASSWORD:  "bg-gold/15 text-gold-300",
 };
 
+const PERIODS = [
+  { v: "7", l: "7 derniers jours" },
+  { v: "30", l: "30 derniers jours" },
+  { v: "90", l: "90 derniers jours" },
+  { v: "365", l: "12 derniers mois" },
+  { v: "", l: "Tout l'historique" },
+];
+
 export default function Audit() {
   const [action, setAction] = useState("");
+  const [period, setPeriod] = useState("30");
   const [page, setPage]     = useState(1);
   const [resp, setResp]     = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,8 +44,9 @@ export default function Audit() {
     setLoading(true);
     const params = { page, limit: 30 };
     if (action) params.action = action;
+    if (period) params.from = new Date(Date.now() - parseInt(period, 10) * 86400000).toISOString();
     apiAuditLogs(params).then(setResp).catch(() => setResp({ data: [], pagination: { totalPages: 1, page: 1, total: 0 } })).finally(() => setLoading(false));
-  }, [page, action]);
+  }, [page, action, period]);
   useEffect(() => { load(); }, [load]);
 
   const rows = resp?.data || [];
@@ -50,10 +60,16 @@ export default function Audit() {
           <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Journal d'audit</h1>
           <p className="mt-1 text-[0.88rem] text-white/45">{pg.total} événement{pg.total > 1 ? "s" : ""} enregistré{pg.total > 1 ? "s" : ""}.</p>
         </div>
-        <select value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }}
-          className="rounded-xl border border-white/10 bg-ink-900/50 px-3.5 py-2.5 text-[0.82rem] font-medium text-white/80 outline-none focus:border-gold/50">
-          {ACTIONS.map((a) => <option key={a.v} value={a.v} className="bg-ink-900">{a.l}</option>)}
-        </select>
+        <div className="flex flex-wrap gap-3">
+          <select value={period} onChange={(e) => { setPeriod(e.target.value); setPage(1); }}
+            className="rounded-xl border border-white/10 bg-ink-900/50 px-3.5 py-2.5 text-[0.82rem] font-medium text-white/80 outline-none focus:border-gold/50">
+            {PERIODS.map((p) => <option key={p.v} value={p.v} className="bg-ink-900">{p.l}</option>)}
+          </select>
+          <select value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }}
+            className="rounded-xl border border-white/10 bg-ink-900/50 px-3.5 py-2.5 text-[0.82rem] font-medium text-white/80 outline-none focus:border-gold/50">
+            {ACTIONS.map((a) => <option key={a.v} value={a.v} className="bg-ink-900">{a.l}</option>)}
+          </select>
+        </div>
       </header>
 
       <Panel>

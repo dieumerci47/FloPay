@@ -14,9 +14,25 @@ const STATUSES = [
 ];
 const METHODS = [{ v: "", l: "Tous moyens" }, { v: "MTN", l: "MTN" }, { v: "AIRTEL", l: "Airtel" }];
 
+// Année académique courante (rentrée en septembre, mois index 8)
+function currentAcademicYear() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const start = now.getMonth() >= 8 ? y : y - 1;
+  return `${start}-${start + 1}`;
+}
+const ACADEMIC_YEARS = (() => {
+  const [start] = currentAcademicYear().split("-").map(Number);
+  const list = Array.from({ length: 4 }, (_, i) => {
+    const s = start - i;
+    return { v: `${s}-${s + 1}`, l: `${s}-${s + 1}` };
+  });
+  return [...list, { v: "", l: "Toutes les années" }];
+})();
+
 export default function Payments() {
   const { isSuperAdmin } = useAdminAuth();
-  const [filters, setFilters] = useState({ search: "", status: "", method: "", establishmentId: "" });
+  const [filters, setFilters] = useState({ search: "", status: "", method: "", establishmentId: "", academicYear: currentAcademicYear() });
   const [page, setPage]       = useState(1);
   const [resp, setResp]       = useState(null);
   const [loading, setLoading] = useState(true);
@@ -83,6 +99,7 @@ export default function Payments() {
           <Select value={filters.establishmentId} onChange={(v) => setFilter("establishmentId", v)}
             options={[{ v: "", l: "Tous établissements" }, ...establishments.map((e) => ({ v: e.id, l: e.code }))]} />
         )}
+        <Select value={filters.academicYear} onChange={(v) => setFilter("academicYear", v)} options={ACADEMIC_YEARS} />
         <Select value={filters.status} onChange={(v) => setFilter("status", v)} options={STATUSES} />
         <Select value={filters.method} onChange={(v) => setFilter("method", v)} options={METHODS} />
       </div>

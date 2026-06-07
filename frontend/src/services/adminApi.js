@@ -67,7 +67,10 @@ adminApi.interceptors.response.use(
 
 // ── Endpoints ─────────────────────────────────────────────────────────────────
 export const apiLogin = (email, password) =>
-  adminApi.post("/admin/auth/login", { email, password }).then((r) => r.data.data);
+  adminApi.post("/admin/auth/login", { email, password }).then((r) => {
+    setAccessToken(r.data.data.accessToken); // garde le token en mémoire dès la connexion
+    return r.data.data;
+  });
 
 export const apiRefresh = () => doRefresh();
 
@@ -75,6 +78,14 @@ export const apiLogout = () =>
   adminApi.post("/admin/auth/logout").catch(() => {}).finally(() => setAccessToken(null));
 
 export const apiMe = () => adminApi.get("/admin/auth/me").then((r) => r.data.data.admin);
+
+export const apiChangePassword = (currentPassword, newPassword) =>
+  adminApi
+    .post("/admin/auth/change-password", { currentPassword, newPassword })
+    .then((r) => {
+      setAccessToken(r.data.data.accessToken);
+      return r.data.data; // { accessToken, admin }
+    });
 
 export const apiDashboard = (academicYear) =>
   adminApi.get("/admin/dashboard", { params: academicYear ? { academicYear } : {} }).then((r) => r.data.data);

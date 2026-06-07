@@ -11,7 +11,7 @@ const {
 } = require("../utils/tokens");
 
 // ── Politique anti brute-force ────────────────────────────────────────────────
-const MAX_FAILED_ATTEMPTS = 5;
+const MAX_FAILED_ATTEMPTS = 3;
 const LOCK_DURATION_MIN   = 15;
 
 // Profil public d'un admin (jamais le hash de mot de passe)
@@ -21,6 +21,7 @@ const publicAdmin = (a) => ({
   fullName:      a.fullName,
   role:          a.role,
   establishmentId: a.establishmentId,
+  mustChangePassword: a.mustChangePassword,
   establishment: a.establishment
     ? { id: a.establishment.id, name: a.establishment.name, code: a.establishment.code }
     : null,
@@ -164,6 +165,45 @@ const me = async (req, res) => {
     return success(res, { admin: publicAdmin(admin) });
   } catch (err) {
     logger.error("Erreur me:", err);
+    return error(res, "Erreur serveur", 500);
+  }
+};
+
+// ── Changement de mot de passe (1ʳᵉ connexion ou à la demande) ────────────────
+const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  try {
+    const admin = await prisma.admin.findUnique({
+      where: { id: req.admin.id }, include: { establishment: true },
+    });
+    if (!admin || !admin.isActive) return error(res, "Compte introuvable", 401);
+
+    const ok = await bcrypt.compare(currentPassword, admin.passwordHash);
+    if (!ok) return error(res, "Mot de passe actuel incorrect", 401);
+
+    const same = await bcrypt.compare(newPassword, admin.passwordHash);
+    if (same) return error(res, "Le nouveau mot de passe doit être différent de l'actuel", 422);
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const updated = await prisma.admin.update({
+      where: { id: admin.id },
+      data:  { passwordHash, mustChangePassword: false },
+      include: { establishment: true },
+    });
+
+    // Révoque toutes les sessions existantes puis ouvre une session fraîche
+    await prisma.refreshToken.updateMany({
+      where: { adminId: admin.id, revokedAt: null }, data: { revokedAt: new Date() },
+    });
+    const accessToken = signAccessToken(updated);
+    await issueRefreshToken(res, req, updated.id);
+    await audit(req, { action: "CHANGE_PASSWORD", targetType: "Admin", targetId: admin.id });
+
+    logger.info(`🔑 Mot de passe changé: ${admin.email}`);
+    return success(res, { accessToken, admin: publicAdmin(updated) }, "Mot de passe mis à jour");
+
+  } catch (err) {
+    logger.error("Erreur changePassword:", err);
     return error(res, "Erreur serveur", 500);
   }
 };
@@ -529,6 +569,6 @@ const getDashboardStats = async (req, res) => {
 };
 
 module.exports = {
-  login, refresh, logout, me,
+  login, refresh, logout, me, changePassword,
   searchByMatricule, searchByReceipt, listPayments, exportPayments, getDashboardStats,
 };
