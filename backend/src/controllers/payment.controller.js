@@ -1,7 +1,7 @@
 // src/controllers/payment.controller.js
 const { prisma }              = require("../config/database");
 const pawapayService          = require("../services/pawapay.service");
-const pdfService              = require("../services/pdf.service");
+const { applyDepositStatus, reconcileWithPawapay, failureToFrench } = require("../services/payment.sync");
 const { generateReceiptNumber } = require("../utils/receiptNumber");
 const { generateMatricule }     = require("../utils/matricule");
 
@@ -93,6 +93,10 @@ const initiatePayment = async (req, res) => {
     // 4. Générer le numéro de reçu
     const receiptNumber = generateReceiptNumber();
 
+    // Numéro Mobile Money au format MSISDN — source de vérité unique,
+    // utilisée à la fois pour le stockage et l'appel PawaPay.
+    const formattedPhone = pawapayService.constructor.formatPhone(paymentPhone);
+
     // 5. Créer le paiement en statut PENDING
     const payment = await prisma.payment.create({
       data: {
@@ -100,7 +104,7 @@ const initiatePayment = async (req, res) => {
         amount:        programAmount,
         currency:      "XAF",
         paymentMethod,
-        phoneNumber:   PawapayService_formatPhone(paymentPhone),
+        phoneNumber:   formattedPhone,
         academicYear,
         studyYear,
         studentId:     student.id,
@@ -109,8 +113,6 @@ const initiatePayment = async (req, res) => {
     });
 
     // 6. Appeler PawaPay
-    const formattedPhone = pawapayService.constructor.formatPhone(paymentPhone);
-
     const { depositId } = await pawapayService.initiateDeposit({
       phone:         formattedPhone,
       amount:        Number(programAmount),
@@ -147,18 +149,26 @@ const initiatePayment = async (req, res) => {
 // PawaPay appelle cette route quand le paiement est confirmé ou échoue
 const pawapayWebhook = async (req, res) => {
   try {
-    const signature = req.headers["x-signature"] || "";
+    // ── Vérification de la signature (RFC 9421) ────────────────────────────────
+    // req.body est un Buffer brut (express.raw) — requis pour le Content-Digest.
+    const sigResult = await pawapayService.verifyCallbackSignature(req);
+    const enforce =
+      process.env.NODE_ENV === "production" || process.env.PAWAPAY_VERIFY_SIGNATURE === "true";
 
-    // express.raw() donne req.body en Buffer pour vérifier la signature
-    // Il faut parser manuellement le JSON
-    const body = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString()) : req.body;
-
-    // Valider la signature (prod uniquement)
-    const isValid = pawapayService.validateWebhookSignature(body, signature);
-    if (!isValid) {
-      logger.warn("⚠️  Signature webhook invalide");
-      return res.status(401).json({ message: "Signature invalide" });
+    if (sigResult === "valid") {
+      logger.info("🔏 Signature webhook PawaPay vérifiée");
+    } else if (enforce) {
+      // Mode strict (prod) : tout callback non vérifié est rejeté
+      logger.warn(`⚠️  Webhook PawaPay rejeté — signature ${sigResult}`);
+      return res.status(401).json({ message: "Signature requise ou invalide" });
+    } else {
+      // Mode souple (dev) : on n'interrompt pas le flux, mais on trace pour
+      // pouvoir activer le mode strict en confiance une fois "valid" observé.
+      logger.warn(`🔏 Webhook PawaPay: signature ${sigResult} (non bloquant — mode souple)`);
     }
+
+    // express.raw() donne req.body en Buffer — on parse manuellement le JSON
+    const body = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString()) : req.body;
 
     logger.info("📦 Webhook payload reçu:", JSON.stringify(body));
 
@@ -180,47 +190,12 @@ const pawapayWebhook = async (req, res) => {
       return res.status(200).json({ received: true }); // 200 pour ne pas que PawaPay réessaie
     }
 
-    // ── Paiement réussi ───────────────────────────────────────────────────────
-    if (status === "COMPLETED") {
-      // Mettre à jour le paiement
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          status:         "SUCCESS",
-          pawapayStatus:  status,
-          paidAt:         new Date(),
-        },
-      });
-
-      // Générer le PDF de la déclaration de recette
-      const pdfPath = await pdfService.generateReceipt({
-        ...payment,
-        paidAt: new Date(),
-      });
-
-      // Sauvegarder le reçu
-      await prisma.receipt.create({
-        data: {
-          paymentId: payment.id,
-          pdfPath,
-        },
-      });
-
-      logger.info(`✅ Paiement validé & PDF généré: ${payment.receiptNumber}`);
-    }
-
-    // ── Paiement échoué ───────────────────────────────────────────────────────
-    if (status === "FAILED" || status === "TIMED_OUT") {
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          status:               "FAILED",
-          pawapayStatus:        status,
-          pawapayFailureReason: body.failureReason || "Paiement échoué",
-        },
-      });
-      logger.warn(`❌ Paiement échoué: ${payment.receiptNumber} | ${status}`);
-    }
+    // Logique unique (idempotente) — partagée avec la réconciliation admin
+    await applyDepositStatus(payment, {
+      pawapayStatus: status,
+      failureReason: body.failureReason,
+      paidAt:        new Date(),
+    });
 
     // PawaPay attend toujours un 200
     return res.status(200).json({ received: true });
@@ -236,21 +211,25 @@ const getPaymentStatus = async (req, res) => {
   try {
     const { paymentId } = req.params;
 
-    const payment = await prisma.payment.findUnique({
+    let payment = await prisma.payment.findUnique({
       where:   { id: paymentId },
-      include: { receipt: true },
+      include: {
+        receipt: true,
+        student: { include: { establishment: true } },
+        program: { include: { level: true } },
+      },
     });
 
     if (!payment) return error(res, "Paiement non trouvé", 404);
 
-    // Si toujours PENDING, vérifier directement chez PawaPay
+    // Si toujours PENDING, réconcilier avec PawaPay (filet si le webhook n'arrive pas)
     if (payment.status === "PENDING" && payment.pawapayDepositId) {
-      try {
-        const pawapayData = await pawapayService.checkDepositStatus(payment.pawapayDepositId);
-        logger.info(`🔍 Statut PawaPay: ${pawapayData.status} pour ${payment.receiptNumber}`);
-        // On pourrait mettre à jour la DB ici si on veut, mais le webhook s'en charge.
-      } catch (checkErr) {
-        logger.warn(`⚠️ Impossible de vérifier le statut chez PawaPay pour ${payment.receiptNumber}: ${checkErr.message}`);
+      const { changed } = await reconcileWithPawapay(payment);
+      if (changed) {
+        payment = await prisma.payment.findUnique({
+          where:   { id: paymentId },
+          include: { receipt: true },
+        });
       }
     }
 
@@ -261,6 +240,12 @@ const getPaymentStatus = async (req, res) => {
       amount:        Number(payment.amount),
       paidAt:        payment.paidAt,
       hasReceipt:    !!payment.receipt,
+      failure:       payment.status === "FAILED"
+        ? {
+            code:    payment.pawapayFailureCode,
+            message: failureToFrench(payment.pawapayFailureCode, payment.pawapayFailureReason),
+          }
+        : null,
     });
 
   } catch (err) {
@@ -345,13 +330,5 @@ const verifyReceipt = async (req, res) => {
     return error(res, "Erreur lors de la vérification", 500);
   }
 };
-
-// helper local pour éviter d'exposer la classe
-function PawapayService_formatPhone(phone) {
-  const cleaned = phone.replace(/\D/g, "");
-  if (cleaned.startsWith("242")) return cleaned;
-  if (cleaned.startsWith("0"))   return `242${cleaned.slice(1)}`;
-  return `242${cleaned}`;
-}
 
 module.exports = { initiatePayment, pawapayWebhook, getPaymentStatus, downloadReceipt, verifyReceipt };

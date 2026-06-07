@@ -9,6 +9,7 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:seed": "node prisma/seed.js",
+    "db:backfill-failures": "node prisma/backfill-failure-codes.js",
     "db:studio": "prisma studio"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "express-rate-limit": "^7.2.0",
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
+    "http-message-signatures": "^1.0.6",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "pdfkit": "^0.15.0",

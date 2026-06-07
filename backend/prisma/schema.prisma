@@ -95,7 +95,8 @@ model Payment {
   // PawaPay
   pawapayDepositId     String?       @unique
   pawapayStatus        String?
-  pawapayFailureReason String?
+  pawapayFailureReason String?       // message d'origine (détail)
+  pawapayFailureCode   String?       // code d'échec stable (ex: INSUFFICIENT_BALANCE)
 
   // Timestamps
   paidAt               DateTime?

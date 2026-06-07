@@ -7,7 +7,7 @@ const { initiatePayment, pawapayWebhook, getPaymentStatus, downloadReceipt, veri
   = require("../controllers/payment.controller");
 
 const { login, refresh, logout, me,
-        searchByMatricule, searchByReceipt, listPayments, getDashboardStats }
+        searchByMatricule, searchByReceipt, listPayments, exportPayments, getDashboardStats }
   = require("../controllers/admin.controller");
 
 const { listAdmins, createAdmin, setAdminActive, resetAdminPassword, listAuditLogs }
@@ -60,6 +60,7 @@ router.get("/admin/dashboard",               authenticate, attachScope, getDashb
 router.get("/admin/receipts/:receiptNumber", authenticate, attachScope, searchByReceipt);
 router.get("/admin/students/:matricule",     authenticate, attachScope, searchByMatricule);
 router.get("/admin/payments",                authenticate, attachScope, listPayments);
+router.get("/admin/payments/export",         authenticate, attachScope, exportPayments);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SUPER ADMIN — Gestion des admins, catalogue & audit

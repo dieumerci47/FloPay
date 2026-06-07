@@ -88,6 +88,19 @@ export const apiSearchMatricule = (matricule) =>
 export const apiPayments = (params) =>
   adminApi.get("/admin/payments", { params }).then((r) => r.data);
 
+// Export CSV (blob authentifié) — déclenche le téléchargement côté navigateur
+export const apiExportPayments = async (params) => {
+  const r = await adminApi.get("/admin/payments/export", { params, responseType: "blob" });
+  const url = window.URL.createObjectURL(new Blob([r.data], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `paiements_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 export const apiEstablishments = () =>
   adminApi.get("/establishments").then((r) => r.data.data);
 

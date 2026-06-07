@@ -4,6 +4,7 @@ const bcrypt              = require("bcryptjs");
 const { success, error, paginated } = require("../utils/response");
 const logger              = require("../utils/logger");
 const { audit }           = require("../utils/audit");
+const { reconcileWithPawapay, failureToFrench } = require("../services/payment.sync");
 const {
   signAccessToken, generateRefreshToken, hashToken,
   refreshExpiry, refreshCookieOptions, REFRESH_COOKIE,
@@ -175,14 +176,13 @@ const scopedPaymentWhere = (req) =>
 const searchByReceipt = async (req, res) => {
   const { receiptNumber } = req.params;
   try {
-    const payment = await prisma.payment.findUnique({
-      where:   { receiptNumber },
-      include: {
-        student: { include: { establishment: true } },
-        program: { include: { level: true } },
-        receipt: true,
-      },
-    });
+    const includeShape = {
+      student: { include: { establishment: true } },
+      program: { include: { level: true } },
+      receipt: true,
+    };
+
+    let payment = await prisma.payment.findUnique({ where: { receiptNumber }, include: includeShape });
 
     if (!payment) return error(res, "Aucun paiement trouvé avec ce numéro de reçu", 404);
 
@@ -191,11 +191,27 @@ const searchByReceipt = async (req, res) => {
       return error(res, "Ce reçu n'appartient pas à votre établissement", 403);
     }
 
+    // Réconciliation à la demande : si le paiement est encore en attente, on
+    // redemande la vérité à PawaPay (le webhook a pu ne jamais arriver).
+    let reconciled = null;
+    if (payment.status === "PENDING" && payment.pawapayDepositId) {
+      const r = await reconcileWithPawapay(payment);
+      reconciled = { reachable: r.reachable, changed: r.changed, pawapayStatus: r.pawapayStatus };
+      if (r.changed) {
+        payment = await prisma.payment.findUnique({ where: { receiptNumber }, include: includeShape });
+        await audit(req, {
+          action: "RECONCILE_PAYMENT", targetType: "Payment", targetId: payment.id,
+          detail: `${receiptNumber} → ${r.status}`,
+        });
+      }
+    }
+
     await audit(req, {
       action: "VERIFY_RECEIPT", targetType: "Payment", targetId: payment.id, detail: receiptNumber,
     });
 
     return success(res, {
+      reconciled,
       receiptNumber: payment.receiptNumber,
       status:        payment.status,
       paymentStatus: payment.status === "SUCCESS" ? "PAYÉ" : "NON PAYÉ",
@@ -205,6 +221,12 @@ const searchByReceipt = async (req, res) => {
       paidAt:        payment.paidAt,
       academicYear:  payment.academicYear,
       hasReceipt:    !!payment.receipt,
+      failure:       payment.status === "FAILED"
+        ? {
+            code:    payment.pawapayFailureCode,
+            message: failureToFrench(payment.pawapayFailureCode, payment.pawapayFailureReason),
+          }
+        : null,
       student: {
         lastName:      payment.student.lastName,
         firstName:     payment.student.firstName,
@@ -296,28 +318,36 @@ const searchByMatricule = async (req, res) => {
   }
 };
 
+// Construit le filtre Prisma "Payment" à partir du scope + des filtres de requête.
+// Source unique utilisée par la liste paginée ET l'export CSV (même cloisonnement).
+const buildPaymentWhere = (req) => {
+  const { status, method, establishmentId, academicYear, search } = req.query;
+  const where = { ...scopedPaymentWhere(req) };
+  if (status)       where.status        = status;
+  if (method)       where.paymentMethod = method;
+  if (academicYear) where.academicYear  = academicYear;
+
+  // Le super admin peut filtrer par établissement ; l'admin d'établissement est déjà restreint
+  if (req.scope.isSuperAdmin && establishmentId) {
+    where.student = { ...(where.student || {}), establishmentId };
+  }
+  if (search) {
+    where.OR = [
+      { receiptNumber: { contains: search, mode: "insensitive" } },
+      { student: { ...(where.student || {}), matricule: { contains: search, mode: "insensitive" } } },
+      { student: { ...(where.student || {}), lastName:  { contains: search, mode: "insensitive" } } },
+    ];
+  }
+  return where;
+};
+
 // ── Liste des paiements (cloisonnée) ──────────────────────────────────────────
 const listPayments = async (req, res) => {
-  const { page = 1, limit = 20, status, method, establishmentId, academicYear, search } = req.query;
+  const { page = 1, limit = 20 } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   try {
-    const where = { ...scopedPaymentWhere(req) };
-    if (status)       where.status        = status;
-    if (method)       where.paymentMethod = method;
-    if (academicYear) where.academicYear  = academicYear;
-
-    // Le super admin peut filtrer par établissement ; l'admin d'établissement est déjà restreint
-    if (req.scope.isSuperAdmin && establishmentId) {
-      where.student = { ...(where.student || {}), establishmentId };
-    }
-    if (search) {
-      where.OR = [
-        { receiptNumber: { contains: search, mode: "insensitive" } },
-        { student: { ...(where.student || {}), matricule: { contains: search, mode: "insensitive" } } },
-        { student: { ...(where.student || {}), lastName:  { contains: search, mode: "insensitive" } } },
-      ];
-    }
+    const where = buildPaymentWhere(req);
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
@@ -352,6 +382,70 @@ const listPayments = async (req, res) => {
   } catch (err) {
     logger.error("Erreur listPayments:", err);
     return error(res, "Erreur lors de la récupération", 500);
+  }
+};
+
+// ── Export CSV des paiements (cloisonné, mêmes filtres que la liste) ──────────
+// Échappe une cellule pour un CSV à séparateur ";" (compatible Excel FR)
+const csvCell = (v) => {
+  const s = v == null ? "" : String(v);
+  return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+const csvDateTime = (d) => {
+  if (!d) return "";
+  const x = new Date(d);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(x.getDate())}/${p(x.getMonth() + 1)}/${x.getFullYear()} ${p(x.getHours())}:${p(x.getMinutes())}`;
+};
+
+const exportPayments = async (req, res) => {
+  try {
+    const where = buildPaymentWhere(req);
+    const payments = await prisma.payment.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: {
+        student: { include: { establishment: true } },
+        program: { include: { level: true } },
+      },
+    });
+
+    await audit(req, { action: "EXPORT_PAYMENTS", detail: `${payments.length} ligne(s)` });
+
+    const header = [
+      "N° reçu", "Nom", "Prénom", "Matricule", "Établissement", "Parcours", "Niveau",
+      "Montant", "Devise", "Moyen", "Téléphone", "Statut", "Année académique", "Payé le", "Créé le",
+    ];
+    const lines = payments.map((p) => [
+      p.receiptNumber,
+      p.student.lastName,
+      p.student.firstName,
+      p.student.matricule,
+      p.student.establishment.name,
+      p.program.name,
+      `${p.program.level.name} ${p.studyYear}`,
+      Number(p.amount),
+      p.currency,
+      p.paymentMethod,
+      p.phoneNumber,
+      p.status,
+      p.academicYear,
+      csvDateTime(p.paidAt),
+      csvDateTime(p.createdAt),
+    ]);
+
+    // BOM UTF-8 pour qu'Excel affiche correctement les accents
+    const BOM = String.fromCharCode(0xFEFF); // Excel affiche les accents correctement avec un BOM UTF-8
+    const csv = BOM + [header, ...lines].map((row) => row.map(csvCell).join(";")).join("\r\n");
+    const filename = `paiements_${new Date().toISOString().slice(0, 10)}.csv`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.send(csv);
+
+  } catch (err) {
+    logger.error("Erreur exportPayments:", err);
+    return error(res, "Erreur lors de l'export", 500);
   }
 };
 
@@ -436,5 +530,5 @@ const getDashboardStats = async (req, res) => {
 
 module.exports = {
   login, refresh, logout, me,
-  searchByMatricule, searchByReceipt, listPayments, getDashboardStats,
+  searchByMatricule, searchByReceipt, listPayments, exportPayments, getDashboardStats,
 };

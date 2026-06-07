@@ -1,5 +1,6 @@
 // src/pages/PaymentForm.js
 import React, { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import {
   getEstablishments,
   getPrograms,
@@ -139,6 +140,7 @@ export default function PaymentForm() {
 
   const [paymentData, setPaymentData] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState(null);
+  const [paymentFailure, setPaymentFailure] = useState(null);
   const [pollCount, setPollCount] = useState(0);
 
   const [loading, setLoading] = useState(false);
@@ -186,6 +188,7 @@ export default function PaymentForm() {
     try {
       const data = await getPaymentStatus(paymentData.paymentId);
       setPaymentStatus(data.status);
+      if (data.failure) setPaymentFailure(data.failure);
       if (data.status === "SUCCESS" || data.status === "FAILED") return;
     } catch (err) {
       console.warn("Polling error:", err);
@@ -789,7 +792,8 @@ export default function PaymentForm() {
                   </div>
                   <h2 className="font-display text-2xl font-bold text-red-600">Paiement échoué</h2>
                   <p className="mt-3 max-w-sm text-[0.92rem] leading-relaxed text-ink-900/55">
-                    Le paiement n'a pas pu être traité. Cela peut être dû à un solde insuffisant ou à un délai de confirmation dépassé.
+                    {paymentFailure?.message
+                      || "Le paiement n'a pas pu être traité. Cela peut être dû à un solde insuffisant ou à un délai de confirmation dépassé."}
                   </p>
                   <PrimaryButton
                     className="mt-7 max-w-xs"
@@ -797,6 +801,7 @@ export default function PaymentForm() {
                       setStep(3);
                       setPaymentStatus(null);
                       setPaymentData(null);
+                      setPaymentFailure(null);
                     }}
                   >
                     <Icon.ArrowLeft className="h-4 w-4" /> Réessayer
@@ -808,7 +813,17 @@ export default function PaymentForm() {
 
           {/* Pied de page */}
           <div className="mt-auto pt-9 text-center text-[0.74rem] text-ink-900/35">
-            FloPay · Paiement sécurisé des frais de scolarité — UMG · {CURRENT_YEAR}
+            <p>FloPay · Paiement sécurisé des frais de scolarité — UMG · {CURRENT_YEAR}</p>
+            <Link
+              to="/admin"
+              className="mt-2 inline-flex items-center gap-1 text-ink-900/30 transition-colors hover:text-ink-700"
+              title="Accès réservé au personnel"
+            >
+              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" />
+              </svg>
+              Espace administration
+            </Link>
           </div>
         </div>
       </main>

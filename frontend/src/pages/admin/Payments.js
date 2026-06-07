@@ -1,9 +1,9 @@
 // src/pages/admin/Payments.js
 import React, { useEffect, useState, useCallback } from "react";
-import { apiPayments, apiEstablishments } from "../../services/adminApi";
+import { apiPayments, apiEstablishments, apiExportPayments } from "../../services/adminApi";
 import { useAdminAuth } from "../../context/AdminAuth";
-import { Panel, Spinner, StatusBadge, fmtMoney, fmtDate } from "../../components/admin/ui";
-import { Search } from "../../components/admin/icons";
+import { Panel, Spinner, StatusBadge, Button, fmtMoney, fmtDate } from "../../components/admin/ui";
+import { Search, Download } from "../../components/admin/icons";
 
 const STATUSES = [
   { v: "", l: "Tous statuts" },
@@ -20,7 +20,15 @@ export default function Payments() {
   const [page, setPage]       = useState(1);
   const [resp, setResp]       = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [establishments, setEstablishments] = useState([]);
+
+  const handleExport = async () => {
+    setExporting(true);
+    const params = {};
+    Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v; });
+    try { await apiExportPayments(params); } catch (e) { /* silencieux */ } finally { setExporting(false); }
+  };
 
   useEffect(() => {
     if (isSuperAdmin) apiEstablishments().then(setEstablishments).catch(() => {});
@@ -49,10 +57,15 @@ export default function Payments() {
 
   return (
     <div className="space-y-7">
-      <header className="animate-fade-up">
-        <p className="text-[0.74rem] font-semibold uppercase tracking-[0.18em] text-gold/70">Transactions</p>
-        <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Paiements</h1>
-        <p className="mt-1 text-[0.88rem] text-white/45">{pg.total} paiement{pg.total > 1 ? "s" : ""} {isSuperAdmin ? "au total" : "dans votre établissement"}.</p>
+      <header className="flex flex-wrap items-end justify-between gap-4 animate-fade-up">
+        <div>
+          <p className="text-[0.74rem] font-semibold uppercase tracking-[0.18em] text-gold/70">Transactions</p>
+          <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Paiements</h1>
+          <p className="mt-1 text-[0.88rem] text-white/45">{pg.total} paiement{pg.total > 1 ? "s" : ""} {isSuperAdmin ? "au total" : "dans votre établissement"}.</p>
+        </div>
+        <Button variant="ghost" onClick={handleExport} loading={exporting} disabled={pg.total === 0}>
+          <Download className="h-4 w-4" /> Exporter en CSV
+        </Button>
       </header>
 
       {/* Filtres */}

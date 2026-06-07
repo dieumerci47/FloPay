@@ -22,6 +22,7 @@ export const Lock = (p) => (<svg {...base} {...p}><rect x="4" y="10" width="16" 
 export const Mail = (p) => (<svg {...base} {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>);
 export const ArrowRight = (p) => (<svg {...base} strokeWidth="2" {...p}><path d="M5 12h14M13 6l6 6-6 6"/></svg>);
 export const Building = (p) => (<svg {...base} {...p}><path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16"/><path d="M15 9h4a1 1 0 0 1 1 1v11M3 21h18"/><path d="M8 8h2M8 12h2M8 16h2"/></svg>);
+export const Download = (p) => (<svg {...base} {...p}><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>);
 
 // Marque FloPay (carte) — reprend le logo du parcours étudiant
 export const Mark = (p) => (

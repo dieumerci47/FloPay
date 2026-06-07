@@ -147,6 +147,33 @@ export default function Verify() {
               </div>
 
               <div className="p-6">
+                {/* Réconciliation PawaPay (mode reçu, paiement initialement en attente) */}
+                {kind === "receipt" && data.reconciled && (
+                  data.reconciled.changed ? (
+                    <div className="mb-4 flex items-center gap-2 rounded-xl bg-mint/10 px-3.5 py-2.5 text-[0.78rem] text-emerald-300">
+                      <Check className="h-4 w-4 flex-none" />
+                      Statut actualisé en direct auprès de PawaPay.
+                    </div>
+                  ) : !data.reconciled.reachable ? (
+                    <div className="mb-4 flex items-center gap-2 rounded-xl bg-gold/10 px-3.5 py-2.5 text-[0.78rem] text-gold-300">
+                      <Cross className="h-4 w-4 flex-none" />
+                      PawaPay injoignable — statut non reconfirmé, susceptible d'évoluer.
+                    </div>
+                  ) : (
+                    <div className="mb-4 rounded-xl bg-white/5 px-3.5 py-2.5 text-[0.78rem] text-white/50">
+                      Confirmé auprès de PawaPay : paiement toujours en attente.
+                    </div>
+                  )
+                )}
+
+                {/* Raison d'échec (mode reçu) */}
+                {kind === "receipt" && data.status === "FAILED" && data.failure?.message && (
+                  <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-[0.82rem] text-red-200">
+                    <Cross className="mt-0.5 h-4 w-4 flex-none" />
+                    <span><span className="font-semibold">Motif de l'échec : </span>{data.failure.message}</span>
+                  </div>
+                )}
+
                 {/* Montant (mode reçu) */}
                 {kind === "receipt" && (
                   <div className="mb-5 rounded-xl border border-white/8 bg-ink-950/50 px-5 py-4 text-center">

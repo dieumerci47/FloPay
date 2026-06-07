@@ -13,6 +13,7 @@ const { connectDB }  = require("./config/database");
 const routes         = require("./routes/index");
 const logger         = require("./utils/logger");
 const { error }      = require("./utils/response");
+const { startReconcileCron } = require("./services/reconcile.cron");
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -98,6 +99,7 @@ const start = async () => {
     logger.info(`🚀 UMG PayTech API démarrée sur le port ${PORT}`);
     logger.info(`📍 Environnement : ${process.env.NODE_ENV || "development"}`);
     logger.info(`🔗 Health check  : http://localhost:${PORT}/health`);
+    startReconcileCron();
   });
 };
 
