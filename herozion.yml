@@ -1,0 +1,120 @@
+name: Herozion Security Scan
+
+on:
+  push:
+    branches-ignore: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af  # v4.1.0
+        with:
+          node-version: '20'
+
+      - name: Install Herozion CLI
+        run: npm install --global herozion@1.1.20
+
+      - name: Create .herozion config
+        env:
+          HEROZION_API_KEY: ${{ secrets.HEROZION_API_KEY }}
+          HEROZION_PROJECT_ID: ${{ secrets.HEROZION_PROJECT_ID }}
+          HEROZION_API_URL: https://api.herozion.io
+        run: |
+          mkdir -p ~/.herozion
+          echo "{\"api_url\": \"$HEROZION_API_URL\", \"project_id\": \"$HEROZION_PROJECT_ID\", \"token\": \"$HEROZION_API_KEY\"}" > ~/.herozion/config.json
+
+      - name: Run Herozion security scan
+        id: scan
+        env:
+          HEROZION_API_KEY: ${{ secrets.HEROZION_API_KEY }}
+          HEROZION_PROJECT_ID: ${{ secrets.HEROZION_PROJECT_ID }}
+          HEROZION_CI_PIPELINE_REF: ${{ github.head_ref || github.ref_name }}
+          HEROZION_CI_COMMIT_SHA: ${{ github.sha }}
+          HEROZION_CI_COMMIT_AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
+        run: |
+          set +e
+          herozion scan \
+            --fail-on=critical,high \
+            --min-score=80 \
+            --output=json > /tmp/herozion-result.json 2>/dev/null
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+          cat /tmp/herozion-result.json
+
+      - name: Post PR comment on quality gate failure
+        if: always() && steps.scan.outputs.exit_code != '0'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            let result = {};
+            try { result = JSON.parse(fs.readFileSync('/tmp/herozion-result.json', 'utf8')); } catch {}
+
+            // Resolve PR number — works for both push and pull_request events
+            let prNumber = context.payload?.pull_request?.number ?? context.issue?.number;
+            if (!prNumber) {
+              const branch = context.ref.replace('refs/heads/', '');
+              const { data: prs } = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                head:  `${context.repo.owner}:${branch}`,
+                state: 'open',
+              });
+              if (prs.length === 0) { core.info('No open PR for this branch — skipping comment.'); return; }
+              prNumber = prs[0].number;
+            }
+
+            const score    = result?.score?.value ?? 0;
+            const grade    = result?.score?.grade ?? 'F';
+            const total    = result?.total_vulnerabilities ?? 0;
+            const scanId   = result?.scan_id ?? '';
+            const vulns    = result?.vulnerabilities ?? [];
+            const minScore = result?.policy?.min_score ?? 80;
+            const sevOrder = ['critical','high','medium','low','info'];
+            const sevIcons = {critical:'🔴',high:'🟠',medium:'🟡',low:'🔵',info:'⚪'};
+            const gradeIcons = {A:'🟢',B:'🟡',C:'🟠',D:'🔴',F:'💀'};
+            const sevCounts = {};
+            vulns.forEach(v => { sevCounts[v.severity] = (sevCounts[v.severity]||0)+1; });
+            const tableRows = sevOrder.filter(s => sevCounts[s] > 0)
+              .map(s => `| ${sevIcons[s]} ${s[0].toUpperCase()+s.slice(1)} | ${sevCounts[s]} |`).join('\n');
+            const top5 = [...vulns]
+              .sort((a,b) => sevOrder.indexOf(a.severity)-sevOrder.indexOf(b.severity))
+              .slice(0,5)
+              .map(v => `- **[${v.severity.toUpperCase()}]** ${v.title}${v.file_path ? ` — \`${v.file_path}${v.line_number?':'+v.line_number:''}\`` : ''}`)
+              .join('\n');
+            const body = [
+              '## ❌ Herozion Security Scan — Quality Gate **FAILED**','',
+              `${gradeIcons[grade]??'⚪'} Grade **${grade}** · Score **${score}/100** · Required: **≥ ${minScore}**`,'',
+              `Scanned on commit \`${context.sha.slice(0,8)}\` · **${total} vulnerabilities** found`,'',
+              '| Severity | Count |','|----------|-------|',tableRows,'',
+              '**Top issues:**',top5,'',
+              `> ⛔ Security score **${score}/100** is below the required threshold of **${minScore}**.`,'',
+              scanId ? `💡 [View full report on Herozion](https://app.herozion.io/reports/${scanId})` : '💡 [View reports on Herozion](https://app.herozion.io)','',
+              '---','*Posted by [Herozion](https://herozion.io) · automated security scan*',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: prNumber,
+              body,
+            });
+
+      - name: Fail pipeline if gate failed
+        if: always() && steps.scan.outputs.exit_code != '0'
+        run: exit 1
+
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08  # v4.6.0
+        with:
+          name: herozion-scan-report
+          path: ~/.herozion/reports/
+          retention-days: 30
